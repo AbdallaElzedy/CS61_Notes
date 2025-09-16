@@ -4,9 +4,10 @@
 1. [Introduction to Bitwise Operations](#introduction-to-bitwise-operations)
 2. [Understanding Memory Alignment](#understanding-memory-alignment)
 3. [The Magic of `& ~15u`](#the-magic-of--15u)
-4. [Mathematical Intuition](#mathematical-intuition)
-5. [Power of Two Detection](#power-of-two-detection)
-6. [Practical Applications](#practical-applications)
+4. [Struct Memory Layout and Padding](#struct-memory-layout-and-padding)
+5. [Mathematical Intuition](#mathematical-intuition)
+6. [Power of Two Detection](#power-of-two-detection)
+7. [Practical Applications](#practical-applications)
 
 ## Introduction to Bitwise Operations
 
@@ -122,6 +123,152 @@ After `25 & ~15u = 16`:
 | Address | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29 | 30 | 31 |
 |---------|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|
 | Content | ▓  | ▓  | ▓  | ▓  | □  | □  | □  | □  | □  | □  | □  | □  | □  | □  | □  | □  |
+
+## Struct Memory Layout and Padding
+
+### Why Structs Need Padding
+
+Compilers add padding bytes to ensure each member is properly aligned. This affects the total size of the struct.
+
+### Example 1: Poor Layout
+
+```cpp
+struct PoorLayout {
+    char a;     // 1 byte
+    int b;      // 4 bytes
+    char c;     // 1 byte
+    short d;    // 2 bytes
+};
+```
+
+Memory layout:
+
+| Offset | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 |
+|--------|---|---|---|---|---|---|---|---|---|---|----|-----|
+| Data   | a | ❌ | ❌ | ❌ | b | b | b | b | c | ❌ | d  | d   |
+| Type   | char | pad | pad | pad | int | int | int | int | char | pad | short | short |
+
+**Total size: 12 bytes** (4 bytes of padding wasted!)
+
+### Example 2: Optimized Layout
+
+```cpp
+struct OptimizedLayout {
+    int b;      // 4 bytes
+    short d;    // 2 bytes
+    char a;     // 1 byte
+    char c;     // 1 byte
+};
+```
+
+Memory layout:
+
+| Offset | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|--------|---|---|---|---|---|---|---|---|
+| Data   | b | b | b | b | d | d | a | c |
+| Type   | int | int | int | int | short | short | char | char |
+
+**Total size: 8 bytes** (no padding needed!)
+
+### Example 3: Complex Struct
+
+```cpp
+struct ComplexExample {
+    char flag;          // 1 byte
+    double value;       // 8 bytes (needs 8-byte alignment)
+    short count;        // 2 bytes
+    int* ptr;          // 8 bytes on 64-bit system
+    char status;       // 1 byte
+};
+```
+
+Memory layout on 64-bit system:
+
+| Offset | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
+|--------|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|
+| Data   | flag | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | value | value | value | value | value | value | value | value |
+
+| Offset | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29 | 30 | 31 |
+|--------|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|
+| Data   | count | count | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ptr | ptr | ptr | ptr | ptr | ptr | ptr | ptr |
+
+| Offset | 32 | 33 | 34 | 35 | 36 | 37 | 38 | 39 |
+|--------|----|----|----|----|----|----|----|-----|
+| Data   | status | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+**Total size: 40 bytes** (15 bytes of padding!)
+
+### Alignment Rules for Structs
+
+1. **Member Alignment**: Each member is aligned to its natural boundary
+2. **Struct Alignment**: The struct itself is aligned to the largest member's alignment
+3. **Total Size**: Must be a multiple of the struct's alignment
+
+### Using `alignas` Specifier
+
+```cpp
+struct alignas(16) AlignedStruct {
+    char data[13];  // 13 bytes
+};  // Total size: 16 bytes (3 bytes padding)
+```
+
+Memory layout:
+
+| Offset | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
+|--------|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|
+| Data   | d | d | d | d | d | d | d | d | d | d | d  | d  | d  | ❌  | ❌  | ❌  |
+
+### Checking Struct Layout
+
+```cpp
+#include <iostream>
+#include <cstddef>
+
+struct Example {
+    char a;
+    int b;
+    char c;
+    short d;
+};
+
+int main() {
+    std::cout << "Size of struct: " << sizeof(Example) << " bytes\n";
+    std::cout << "Offset of a: " << offsetof(Example, a) << "\n";
+    std::cout << "Offset of b: " << offsetof(Example, b) << "\n";
+    std::cout << "Offset of c: " << offsetof(Example, c) << "\n";
+    std::cout << "Offset of d: " << offsetof(Example, d) << "\n";
+}
+```
+
+Output:
+```
+Size of struct: 12 bytes
+Offset of a: 0
+Offset of b: 4
+Offset of c: 8
+Offset of d: 10
+```
+
+### Packed Structs (No Padding)
+
+```cpp
+#pragma pack(1)
+struct PackedStruct {
+    char a;     // offset 0
+    int b;      // offset 1 (unaligned!)
+    char c;     // offset 5
+    short d;    // offset 6
+};  // Total size: 8 bytes
+#pragma pack()
+```
+
+Memory layout:
+
+| Offset | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|--------|---|---|---|---|---|---|---|---|
+| Data   | a | b | b | b | b | c | d | d |
+
+**Warning**: Packed structs can be slower due to unaligned access!
 
 ## Mathematical Intuition
 
@@ -251,25 +398,23 @@ size_t roundUp16(size_t n) {
 }
 ```
 
-### 5. Structure Padding
+### 5. Structure Optimization
 
 ```cpp
-// Compiler adds padding for alignment
-struct Example {
-    char a;      // offset 0
-    // 3 bytes padding
-    int b;       // offset 4 (aligned!)
-    char c;      // offset 8
-    // 1 byte padding
-    short d;     // offset 10 (aligned!)
-};  // Total size: 12 bytes
+// Before: 24 bytes
+struct Before {
+    char a;      // 1 + 7 padding
+    double b;    // 8
+    char c;      // 1 + 7 padding
+};
+
+// After: 16 bytes
+struct After {
+    double b;    // 8
+    char a;      // 1
+    char c;      // 1 + 6 padding
+};
 ```
-
-Memory layout:
-
-| Offset | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 |
-|--------|---|---|---|---|---|---|---|---|---|---|----|-----|
-| Data   | a | ❌ | ❌ | ❌ | b | b | b | b | c | ❌ | d  | d   |
 
 ### 6. Cache Line Alignment
 
@@ -283,6 +428,7 @@ struct alignas(64) CacheAligned {
 ## Summary
 
 - **Alignment** improves performance and is sometimes required for correctness
+- **Struct padding** can significantly increase memory usage - organize members by size
 - **`& ~15u`** efficiently rounds down to 16-byte boundaries
 - **`u & (u-1)`** detects powers of 2
 - Bitwise operations are faster than arithmetic for alignment
