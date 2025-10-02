@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Harvard CS61 (Notes) x86 Assembly: Instructions, Flags & Jumps</title>
+    <title>Harvard CS61 (Notes) x86 Assembly: Instructions, Flags & Jumps - Interactive</title>
     <style>
         * {
             margin: 0;
@@ -32,7 +32,7 @@
         
         .controls {
             position: fixed;
-            top: 110px;
+            top: 20px;
             left: 300px;
             z-index: 1000;
             background: rgba(20, 30, 48, 0.95);
@@ -355,7 +355,7 @@
     </style>
 </head>
 <body>
-    <div class="main-title">Harvard CS61 (Notes) x86 Assembly: Instructions, Flags & Jumps </div>
+    <div class="main-title">Harvard CS61 (Notes) x86 Assembly: Instructions, Flags & Jumps</div>
     <div id="canvas">
         <svg id="svg-layer">
             <defs>
@@ -523,7 +523,7 @@
                         PF: 'Set if low byte has even number of 1 bits',
                         AF: 'Set if carry from bit 3 to bit 4'
                     },
-                    example: 'ADD EAX, EBX  ; EAX = EAX + EBX'
+                    example: 'Intel: ADD EAX, EBX    ; EAX = EAX + EBX\nAT&T:  add %ebx, %eax   ; %eax = %eax + %ebx'
                 },
                 sub: { 
                     name: 'SUB', 
@@ -538,7 +538,7 @@
                         PF: 'Set if low byte has even parity',
                         AF: 'Set if borrow from bit 4'
                     },
-                    example: 'SUB EAX, EBX  ; EAX = EAX - EBX'
+                    example: 'Intel: SUB EAX, EBX    ; EAX = EAX - EBX\nAT&T:  sub %ebx, %eax   ; %eax = %eax - %ebx'
                 },
                 cmp: { 
                     name: 'CMP', 
@@ -553,7 +553,7 @@
                         PF: 'Set based on low byte parity of result',
                         AF: 'Set if borrow from bit 4'
                     },
-                    example: 'CMP EAX, EBX  ; Compare EAX with EBX'
+                    example: 'Intel: CMP EAX, EBX    ; Compare EAX with EBX\nAT&T:  cmp %ebx, %eax   ; Compare %eax with %ebx'
                 },
                 inc: { 
                     name: 'INC', 
@@ -567,7 +567,7 @@
                         PF: 'Set based on low byte parity',
                         'CF': 'NOT MODIFIED - preserves carry for multi-precision math'
                     },
-                    example: 'INC ECX  ; ECX = ECX + 1'
+                    example: 'Intel: INC ECX         ; ECX = ECX + 1\nAT&T:  inc %ecx        ; %ecx = %ecx + 1'
                 },
                 dec: { 
                     name: 'DEC', 
@@ -580,7 +580,7 @@
                         OF: 'Set if decrement causes signed overflow (0x80→0x7F)',
                         'CF': 'NOT MODIFIED - important for multi-precision operations'
                     },
-                    example: 'DEC ECX  ; ECX = ECX - 1'
+                    example: 'Intel: DEC ECX         ; ECX = ECX - 1\nAT&T:  dec %ecx        ; %ecx = %ecx - 1'
                 },
                 mul: { 
                     name: 'MUL', 
@@ -592,7 +592,7 @@
                         'Result': 'Stored in EDX:EAX (64-bit result for 32-bit multiply)',
                         'Other flags': 'SF, ZF, AF, PF are UNDEFINED after MUL'
                     },
-                    example: 'MUL EBX  ; EDX:EAX = EAX * EBX'
+                    example: 'Intel: MUL EBX         ; EDX:EAX = EAX * EBX\nAT&T:  mul %ebx        ; %edx:%eax = %eax * %ebx'
                 },
                 neg: { 
                     name: 'NEG', 
@@ -605,7 +605,7 @@
                         ZF: 'Set if operand/result is 0',
                         SF: 'Set if result is negative'
                     },
-                    example: 'NEG EAX  ; EAX = -EAX'
+                    example: 'Intel: NEG EAX         ; EAX = -EAX\nAT&T:  neg %eax        ; %eax = -%eax'
                 },
                 and: { 
                     name: 'AND', 
@@ -619,7 +619,7 @@
                         PF: 'Set based on low byte parity',
                         'Common use': 'Testing if specific bits are set'
                     },
-                    example: 'AND EAX, 0xFF  ; Keep only low byte'
+                    example: 'Intel: AND EAX, 0xFF   ; Keep only low byte\nAT&T:  and $0xff, %eax ; Keep only low byte'
                 },
                 or: { 
                     name: 'OR', 
@@ -632,7 +632,7 @@
                         SF: 'Set if MSB of result is 1',
                         PF: 'Set based on low byte parity'
                     },
-                    example: 'OR EAX, EBX  ; EAX = EAX | EBX'
+                    example: 'Intel: OR EAX, EBX     ; EAX = EAX | EBX\nAT&T:  or %ebx, %eax   ; %eax = %eax | %ebx'
                 },
                 xor: { 
                     name: 'XOR', 
@@ -645,7 +645,7 @@
                         SF: 'Set if MSB of result is 1',
                         'XOR trick': 'XOR EAX,EAX is fastest way to zero a register'
                     },
-                    example: 'XOR EAX, EAX  ; Zero out EAX'
+                    example: 'Intel: XOR EAX, EAX    ; Zero out EAX\nAT&T:  xor %eax, %eax  ; Zero out %eax'
                 },
                 test: { 
                     name: 'TEST', 
@@ -658,7 +658,7 @@
                         SF: 'Set if MSB would be set in result',
                         'Common use': 'Check if specific bits are set without modifying'
                     },
-                    example: 'TEST EAX, 0x80  ; Test if bit 7 set'
+                    example: 'Intel: TEST EAX, 0x80  ; Test if bit 7 set\nAT&T:  test $0x80, %eax; Test if bit 7 set'
                 },
                 shl: { 
                     name: 'SHL/SAL', 
@@ -672,7 +672,7 @@
                         SF: 'Set if MSB of result is 1',
                         'Performance': 'Faster than MUL for powers of 2'
                     },
-                    example: 'SHL EAX, 1  ; Multiply by 2'
+                    example: 'Intel: SHL EAX, 1      ; Multiply by 2\nAT&T:  shl $1, %eax    ; Multiply by 2'
                 },
                 shr: { 
                     name: 'SHR', 
@@ -686,7 +686,7 @@
                         SF: 'Always 0 after SHR (MSB filled with 0)',
                         'vs SAR': 'Use SAR for signed division'
                     },
-                    example: 'SHR EAX, 1  ; Divide by 2 (unsigned)'
+                    example: 'Intel: SHR EAX, 1      ; Divide by 2 (unsigned)\nAT&T:  shr $1, %eax    ; Divide by 2 (unsigned)'
                 },
                 rol: { 
                     name: 'ROL', 
@@ -699,7 +699,7 @@
                         'Other flags': 'ZF, SF, PF, AF are NOT affected',
                         'Use case': 'Bit manipulation, checksums, crypto'
                     },
-                    example: 'ROL EAX, 1  ; Rotate left by 1'
+                    example: 'Intel: ROL EAX, 1      ; Rotate left by 1\nAT&T:  rol $1, %eax    ; Rotate left by 1'
                 }
             },
             
@@ -750,11 +750,13 @@
                     condition: 'ZF = 1',
                     dataType: 'Any data type',
                     usage: 'After CMP or arithmetic operations. Used for equality checks, loop termination, or checking if a value is zero.',
-                    example: 'CMP EAX, EBX\nJE equal_label  ; Jump if EAX == EBX',
+                    example: 'Intel: CMP EAX, EBX\n       JE equal_label     ; Jump if EAX == EBX\nAT&T:  cmp %ebx, %eax\n       je equal_label     ; Jump if %eax == %ebx',
                     jumpDecision: [
-                        { condition: 'If X = Y', jumps: true },
-                        { condition: 'If X > Y', jumps: false },
-                        { condition: 'If X < Y', jumps: false }
+                        { condition: 'If result/comparison is zero', jumps: true },
+                        { condition: 'If operands were equal (CMP)', jumps: true },
+                        { condition: 'If result is non-zero', jumps: false },
+                        { condition: 'After SUB: jumps if result = 0', jumps: true },
+                        { condition: 'After DEC: jumps if reached 0', jumps: true }
                     ]
                 },
                 jne: { 
@@ -764,7 +766,7 @@
                     condition: 'ZF = 0',
                     dataType: 'Any data type',
                     usage: 'Opposite of JE. Used for inequality checks or continuing loops while counter is non-zero.',
-                    example: 'DEC ECX\nJNZ loop_start  ; Continue loop if ECX != 0',
+                    example: 'Intel: DEC ECX\n       JNZ loop_start     ; Continue loop if ECX != 0\nAT&T:  dec %ecx\n       jnz loop_start     ; Continue loop if %ecx != 0',
                     jumpDecision: [
                         { condition: 'If X = Y', jumps: false },
                         { condition: 'If X > Y', jumps: true },
@@ -778,7 +780,7 @@
                     condition: 'ZF=0 AND SF=OF',
                     dataType: 'Signed integers (two\'s complement)',
                     usage: 'For signed comparisons. Correctly handles negative numbers.',
-                    example: 'CMP EAX, -10\nJG positive  ; Jump if EAX > -10',
+                    example: 'Intel: CMP EAX, -10\n       JG positive        ; Jump if EAX > -10\nAT&T:  cmp $-10, %eax\n       jg positive        ; Jump if %eax > -10',
                     jumpDecision: [
                         { condition: 'If X > Y (signed)', jumps: true },
                         { condition: 'If X = Y', jumps: false },
@@ -795,7 +797,7 @@
                     condition: 'SF ≠ OF',
                     dataType: 'Signed integers (two\'s complement)',
                     usage: 'For signed comparisons. Handles overflow cases correctly.',
-                    example: 'CMP AL, BL\nJL smaller  ; Jump if AL < BL (signed)',
+                    example: 'Intel: CMP AL, BL\n       JL smaller         ; Jump if AL < BL (signed)\nAT&T:  cmp %bl, %al\n       jl smaller         ; Jump if %al < %bl (signed)',
                     jumpDecision: [
                         { condition: 'If X < Y (signed)', jumps: true },
                         { condition: 'If X = Y', jumps: false },
@@ -812,7 +814,7 @@
                     condition: 'SF = OF',
                     dataType: 'Signed integers',
                     usage: 'Signed comparison for >= checks. Common in range validation.',
-                    example: 'CMP EAX, 0\nJGE non_negative  ; Jump if EAX >= 0',
+                    example: 'Intel: CMP EAX, 0\n       JGE non_negative   ; Jump if EAX >= 0\nAT&T:  cmp $0, %eax\n       jge non_negative   ; Jump if %eax >= 0',
                     jumpDecision: [
                         { condition: 'If X ≥ Y (signed)', jumps: true },
                         { condition: 'If X = Y', jumps: true },
@@ -830,7 +832,7 @@
                     condition: 'ZF=1 OR SF≠OF',
                     dataType: 'Signed integers',
                     usage: 'Signed comparison for <= checks. Used for upper bound checks.',
-                    example: 'CMP EAX, 100\nJLE in_range  ; Jump if EAX <= 100',
+                    example: 'Intel: CMP EAX, 100\n       JLE in_range       ; Jump if EAX <= 100\nAT&T:  cmp $100, %eax\n       jle in_range       ; Jump if %eax <= 100',
                     jumpDecision: [
                         { condition: 'If X ≤ Y (signed)', jumps: true },
                         { condition: 'If X = Y', jumps: true },
@@ -848,7 +850,7 @@
                     condition: 'CF=0 AND ZF=0',
                     dataType: 'Unsigned integers, addresses, sizes',
                     usage: 'For unsigned comparisons. Common with memory addresses and sizes.',
-                    example: 'CMP ECX, array_size\nJA out_of_bounds  ; Jump if index > size',
+                    example: 'Intel: CMP ECX, array_size\n       JA out_of_bounds   ; Jump if index > size\nAT&T:  cmp array_size, %ecx\n       ja out_of_bounds   ; Jump if index > size',
                     jumpDecision: [
                         { condition: 'If X > Y (unsigned)', jumps: true },
                         { condition: 'If X = Y', jumps: false },
@@ -865,7 +867,7 @@
                     condition: 'CF = 1',
                     dataType: 'Unsigned integers, addresses',
                     usage: 'For unsigned comparisons. JC variant used after arithmetic for carry detection.',
-                    example: 'ADD EAX, EBX\nJC overflow  ; Jump if addition overflowed',
+                    example: 'Intel: ADD EAX, EBX\n       JC overflow        ; Jump if addition overflowed\nAT&T:  add %ebx, %eax\n       jc overflow        ; Jump if addition overflowed',
                     jumpDecision: [
                         { condition: 'If X < Y (unsigned)', jumps: true },
                         { condition: 'If X = Y', jumps: false },
@@ -882,7 +884,7 @@
                     condition: 'CF = 0',
                     dataType: 'Unsigned integers',
                     usage: 'Unsigned >= comparison. JNC variant checks for no carry after arithmetic.',
-                    example: 'SUB EAX, EBX\nJNC no_borrow  ; Jump if no borrow occurred',
+                    example: 'Intel: SUB EAX, EBX\n       JNC no_borrow      ; Jump if no borrow occurred\nAT&T:  sub %ebx, %eax\n       jnc no_borrow      ; Jump if no borrow occurred',
                     jumpDecision: [
                         { condition: 'If X ≥ Y (unsigned)', jumps: true },
                         { condition: 'If X = Y', jumps: true },
@@ -900,7 +902,7 @@
                     condition: 'CF=1 OR ZF=1',
                     dataType: 'Unsigned integers',
                     usage: 'Unsigned <= comparison. Common in bounds checking.',
-                    example: 'CMP AL, 255\nJBE valid_byte  ; Jump if AL <= 255',
+                    example: 'Intel: CMP AL, 255\n       JBE valid_byte     ; Jump if AL <= 255\nAT&T:  cmp $255, %al\n       jbe valid_byte     ; Jump if %al <= 255',
                     jumpDecision: [
                         { condition: 'If X ≤ Y (unsigned)', jumps: true },
                         { condition: 'If X = Y', jumps: true },
@@ -918,7 +920,7 @@
                     condition: 'SF = 1',
                     dataType: 'Signed integers',
                     usage: 'Checks if result is negative. Used after arithmetic or TEST instructions.',
-                    example: 'TEST EAX, EAX\nJS negative  ; Jump if EAX is negative',
+                    example: 'Intel: TEST EAX, EAX\n       JS negative        ; Jump if EAX is negative\nAT&T:  test %eax, %eax\n       js negative        ; Jump if %eax is negative',
                     jumpDecision: [
                         { condition: 'If result is negative (MSB = 1)', jumps: true },
                         { condition: 'If result is positive or zero', jumps: false },
@@ -932,7 +934,7 @@
                     condition: 'SF = 0',
                     dataType: 'Signed integers',
                     usage: 'Checks if result is non-negative (positive or zero).',
-                    example: 'SUB EAX, EBX\nJNS result_positive  ; Jump if result >= 0',
+                    example: 'Intel: SUB EAX, EBX\n       JNS result_pos     ; Jump if result >= 0\nAT&T:  sub %ebx, %eax\n       jns result_pos     ; Jump if result >= 0',
                     jumpDecision: [
                         { condition: 'If result is positive or zero (MSB = 0)', jumps: true },
                         { condition: 'If result is negative', jumps: false },
@@ -946,7 +948,7 @@
                     condition: 'OF = 1',
                     dataType: 'Signed integers',
                     usage: 'Detects signed arithmetic overflow. Critical for safe arithmetic.',
-                    example: 'ADD AL, BL\nJO overflow_handler  ; Jump if signed overflow',
+                    example: 'Intel: ADD AL, BL\n       JO overflow_handle ; Jump if signed overflow\nAT&T:  add %bl, %al\n       jo overflow_handle ; Jump if signed overflow',
                     jumpDecision: [
                         { condition: 'If signed overflow occurred', jumps: true },
                         { condition: 'If no signed overflow', jumps: false },
@@ -961,7 +963,7 @@
                     condition: 'OF = 0',
                     dataType: 'Signed integers',
                     usage: 'Ensures no signed overflow occurred. Used for validation.',
-                    example: 'IMUL EAX, EBX\nJNO result_valid  ; Jump if no overflow',
+                    example: 'Intel: IMUL EAX, EBX\n       JNO result_valid   ; Jump if no overflow\nAT&T:  imul %ebx, %eax\n       jno result_valid   ; Jump if no overflow',
                     jumpDecision: [
                         { condition: 'If no signed overflow', jumps: true },
                         { condition: 'If signed overflow occurred', jumps: false }
@@ -974,7 +976,7 @@
                     condition: 'PF = 1',
                     dataType: 'Byte data (low 8 bits)',
                     usage: 'Checks even number of 1 bits in low byte. Used for error detection.',
-                    example: 'XOR AL, checksum\nJP parity_ok  ; Jump if even parity',
+                    example: 'Intel: XOR AL, checksum\n       JP parity_ok       ; Jump if even parity\nAT&T:  xor checksum, %al\n       jp parity_ok       ; Jump if even parity',
                     jumpDecision: [
                         { condition: 'If low byte has even # of 1 bits', jumps: true },
                         { condition: 'If low byte has odd # of 1 bits', jumps: false }
@@ -987,7 +989,7 @@
                     condition: 'PF = 0',
                     dataType: 'Byte data (low 8 bits)',
                     usage: 'Checks odd number of 1 bits in low byte. Used in data validation.',
-                    example: 'TEST AL, AL\nJNP odd_parity  ; Jump if odd parity',
+                    example: 'Intel: TEST AL, AL\n       JNP odd_parity     ; Jump if odd parity\nAT&T:  test %al, %al\n       jnp odd_parity     ; Jump if odd parity',
                     jumpDecision: [
                         { condition: 'If low byte has odd # of 1 bits', jumps: true },
                         { condition: 'If low byte has even # of 1 bits', jumps: false }
@@ -1202,8 +1204,8 @@
             if (jump.jumpDecision) {
                 decisionTable = `
                 <div style="background: #0f1923; padding: 15px; border-radius: 8px; margin: 10px 0; border: 2px solid #ffd93d;">
-                    <p style="color: #ffd93d; font-weight: bold; margin-bottom: 10px;">🎯 Quick Jump Decision (after CMP X, Y):</p>
-                    <p style="color: #64ffda; font-size: 12px; margin-bottom: 10px;">Note: CMP X, Y performs X - Y internally</p>
+                    <p style="color: #ffd93d; font-weight: bold; margin-bottom: 10px;">Jump Decision:</p>
+                    <p style="color: #64ffda; font-size: 12px; margin-bottom: 10px;">After any flag-setting instruction</p>
                     <table style="width: 100%; border-collapse: collapse;">
                         ${jump.jumpDecision.map(row => `
                         <tr style="border-bottom: 1px solid #2a3f5f;">
@@ -1316,8 +1318,8 @@ ${jump.example}
                 if (data.jumpDecision) {
                     decisionTable = `
                     <div style="background: #0f1923; padding: 15px; border-radius: 8px; margin: 10px 0; border: 2px solid #ffd93d;">
-                        <p style="color: #ffd93d; font-weight: bold; margin-bottom: 10px;">🎯 Quick Jump Decision (after CMP X, Y):</p>
-                        <p style="color: #64ffda; font-size: 12px; margin-bottom: 10px;">Note: CMP X, Y performs X - Y internally</p>
+                        <p style="color: #ffd93d; font-weight: bold; margin-bottom: 10px;">Jump Decision:</p>
+                        <p style="color: #64ffda; font-size: 12px; margin-bottom: 10px;">After any flag-setting instruction</p>
                         <table style="width: 100%; border-collapse: collapse;">
                             ${data.jumpDecision.map(row => `
                             <tr style="border-bottom: 1px solid #2a3f5f;">
