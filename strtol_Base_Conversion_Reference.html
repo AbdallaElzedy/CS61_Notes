@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>strtol Base Conversion Reference</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        th {
+            background: #3498db;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        tr:hover {
+            background: #f8f9fa;
+        }
+        .base-col {
+            font-weight: bold;
+            color: #2980b9;
+            font-size: 16px;
+        }
+        .string-col {
+            font-family: 'Courier New', monospace;
+            background: #ecf0f1;
+            padding: 4px 8px;
+            border-radius: 3px;
+        }
+        .result-col {
+            font-weight: 600;
+            color: #27ae60;
+        }
+        .note-col {
+            color: #555;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .highlight {
+            background: #fff3cd;
+        }
+        .code-example {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>strtol() Base Conversion Reference</h1>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Base</th>
+                <th>String Example</th>
+                <th>Result</th>
+                <th>Notes</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="highlight">
+                <td class="base-col">0</td>
+                <td class="string-col">"0xFF"</td>
+                <td class="result-col">255</td>
+                <td class="note-col"><strong>Auto-detect:</strong> Detects hex from 0x prefix</td>
+            </tr>
+            <tr class="highlight">
+                <td class="base-col">0</td>
+                <td class="string-col">"077"</td>
+                <td class="result-col">63</td>
+                <td class="note-col"><strong>Auto-detect:</strong> Detects octal from leading 0</td>
+            </tr>
+            <tr class="highlight">
+                <td class="base-col">0</td>
+                <td class="string-col">"123"</td>
+                <td class="result-col">123</td>
+                <td class="note-col"><strong>Auto-detect:</strong> No prefix means decimal</td>
+            </tr>
+            <tr>
+                <td class="base-col">2</td>
+                <td class="string-col">"1010"</td>
+                <td class="result-col">10</td>
+                <td class="note-col"><strong>Binary:</strong> Only 0 and 1 allowed</td>
+            </tr>
+            <tr>
+                <td class="base-col">2</td>
+                <td class="string-col">"11111111"</td>
+                <td class="result-col">255</td>
+                <td class="note-col"><strong>Binary:</strong> Eight 1s equals 255</td>
+            </tr>
+            <tr>
+                <td class="base-col">8</td>
+                <td class="string-col">"777"</td>
+                <td class="result-col">511</td>
+                <td class="note-col"><strong>Octal:</strong> Digits 0-7 only</td>
+            </tr>
+            <tr>
+                <td class="base-col">8</td>
+                <td class="string-col">"100"</td>
+                <td class="result-col">64</td>
+                <td class="note-col"><strong>Octal:</strong> 1×8² + 0×8¹ + 0×8⁰</td>
+            </tr>
+            <tr>
+                <td class="base-col">10</td>
+                <td class="string-col">"12345"</td>
+                <td class="result-col">12345</td>
+                <td class="note-col"><strong>Decimal:</strong> Standard base-10 (most common)</td>
+            </tr>
+            <tr>
+                <td class="base-col">10</td>
+                <td class="string-col">"-999"</td>
+                <td class="result-col">-999</td>
+                <td class="note-col"><strong>Decimal:</strong> Negative numbers work too</td>
+            </tr>
+            <tr>
+                <td class="base-col">16</td>
+                <td class="string-col">"FF"</td>
+                <td class="result-col">255</td>
+                <td class="note-col"><strong>Hexadecimal:</strong> F = 15, so 15×16 + 15 = 255</td>
+            </tr>
+            <tr>
+                <td class="base-col">16</td>
+                <td class="string-col">"1A2B"</td>
+                <td class="result-col">6699</td>
+                <td class="note-col"><strong>Hexadecimal:</strong> Digits 0-9, A-F (case-insensitive)</td>
+            </tr>
+            <tr>
+                <td class="base-col">16</td>
+                <td class="string-col">"CAFE"</td>
+                <td class="result-col">51966</td>
+                <td class="note-col"><strong>Hexadecimal:</strong> Common for colors and memory addresses</td>
+            </tr>
+            <tr>
+                <td class="base-col">36</td>
+                <td class="string-col">"HELLO"</td>
+                <td class="result-col">29234652</td>
+                <td class="note-col"><strong>Base-36:</strong> Uses 0-9 and A-Z (max base)</td>
+            </tr>
+            <tr>
+                <td class="base-col">36</td>
+                <td class="string-col">"Z"</td>
+                <td class="result-col">35</td>
+                <td class="note-col"><strong>Base-36:</strong> Z is the highest digit (35)</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="code-example">
+// Usage Examples:<br>
+<br>
+long bin = strtol("1010", NULL, 2);        // Binary: 10<br>
+long oct = strtol("777", NULL, 8);         // Octal: 511<br>
+long dec = strtol("100", NULL, 10);        // Decimal: 100<br>
+long hex = strtol("FF", NULL, 16);         // Hex: 255<br>
+long auto1 = strtol("0xFF", NULL, 0);      // Auto-detect hex: 255<br>
+long auto2 = strtol("077", NULL, 0);       // Auto-detect octal: 63<br>
+long max = strtol("HELLO", NULL, 36);      // Base-36: 29234652
+    </div>
+</body>
+</html>
