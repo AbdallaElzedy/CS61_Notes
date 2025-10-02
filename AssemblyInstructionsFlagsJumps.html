@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harvard CS61 (Notes) x86 Assembly: Instructions, Flags & Jumps</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0f1b;
+            color: #e0e6ed;
+            overflow: auto;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        
+        #canvas {
+            width: 100%;
+            min-height: 100vh;
+            background: radial-gradient(ellipse at center, #0f1923 0%, #0a0f1b 100%);
+            position: relative;
+            overflow: visible;
+            padding-bottom: 100px;
+        }
+        
+        .controls {
+            position: fixed;
+            top: 110px;
+            left: 300px;
+            z-index: 1000;
+            background: rgba(20, 30, 48, 0.95);
+            padding: 20px;
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 250px;
+            cursor: move;
+            transition: opacity 0.3s ease;
+        }
+        
+        .controls.minimized {
+            padding: 10px;
+            max-width: 40px;
+            overflow: hidden;
+        }
+        
+        .controls.minimized .control-content {
+            display: none;
+        }
+        
+        .minimize-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 20px;
+            height: 20px;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffd93d;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .minimize-btn:hover {
+            background: rgba(255, 217, 61, 0.2);
+        }
+        
+        .controls h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #ffd93d;
+            font-weight: 600;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            color: #8892b0;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        select {
+            width: 100%;
+            padding: 8px 12px;
+            background: #1a2332;
+            border: 1px solid #2a3f5f;
+            border-radius: 8px;
+            color: #ccd6f6;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        select:hover {
+            border-color: #ffd93d;
+            background: #1e2a3a;
+        }
+        
+        select:focus {
+            outline: none;
+            border-color: #ffd93d;
+            box-shadow: 0 0 0 2px rgba(255, 217, 61, 0.2);
+        }
+        
+        .info-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            background: rgba(20, 30, 48, 0.95);
+            padding: 20px;
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 1000;
+            max-height: 400px;
+            overflow-y: auto;
+            cursor: move;
+        }
+        
+        .info-panel.minimized {
+            padding: 10px;
+            width: 40px;
+            max-height: 40px;
+        }
+        
+        .info-panel.minimized .info-content {
+            display: none;
+        }
+        
+        .info-panel.minimized h3 {
+            display: none;
+        }
+        
+        .info-panel h3 {
+            color: #ffd93d;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .info-content {
+            color: #8892b0;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .node {
+            position: absolute;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+        
+        .instruction-node {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            padding: 12px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(238, 90, 36, 0.3);
+            font-weight: 600;
+            font-size: 14px;
+            border: 2px solid transparent;
+        }
+        
+        .instruction-node:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 25px rgba(238, 90, 36, 0.5);
+            border-color: #fff;
+        }
+        
+        .flag-node {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+            border: 3px solid transparent;
+        }
+        
+        .flag-node:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 30px rgba(102, 126, 234, 0.6);
+            border-color: #fff;
+        }
+        
+        .flag-node .flag-symbol {
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+        }
+        
+        .flag-node .flag-desc {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-top: 4px;
+        }
+        
+        .jump-node {
+            background: linear-gradient(135deg, #f7b731, #f2994a);
+            padding: 10px 18px;
+            border-radius: 20px;
+            box-shadow: 0 4px 15px rgba(247, 183, 49, 0.3);
+            font-weight: 500;
+            font-size: 13px;
+            border: 2px solid transparent;
+        }
+        
+        .jump-node:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 25px rgba(247, 183, 49, 0.5);
+            border-color: #fff;
+        }
+        
+        .arrow-path {
+            fill: none;
+            stroke-width: 2;
+            opacity: 0.3;
+            transition: all 0.3s ease;
+        }
+        
+        .arrow-path.inst-to-flag {
+            stroke: #ff6b6b;
+        }
+        
+        .arrow-path.flag-to-jump {
+            stroke: #f7b731;
+        }
+        
+        .arrow-path.active {
+            opacity: 1;
+            stroke-width: 3;
+            filter: drop-shadow(0 0 6px currentColor);
+        }
+        
+        .arrow-marker {
+            fill: currentColor;
+        }
+        
+        #svg-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+        
+        .legend {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(20, 30, 48, 0.95);
+            padding: 15px 20px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            display: flex;
+            gap: 20px;
+            z-index: 1000;
+            cursor: move;
+        }
+        
+        .legend.minimized {
+            padding: 10px;
+            width: 40px;
+            overflow: hidden;
+        }
+        
+        .legend.minimized .legend-item span {
+            display: none;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #8892b0;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+        
+        .category-label {
+            position: absolute;
+            font-size: 12px;
+            color: #ffd93d;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 600;
+            opacity: 0.8;
+        }
+        
+        .glow-effect {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(100, 255, 218, 0.7); }
+            70% { box-shadow: 0 0 0 20px rgba(100, 255, 218, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(100, 255, 218, 0); }
+        }
+        
+        .main-title {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffd93d;
+            font-size: 20px;
+            font-weight: 600;
+            text-shadow: 0 2px 10px rgba(255, 217, 61, 0.3);
+            z-index: 100;
+        }
+        
+        .tooltip {
+            position: absolute;
+            background: rgba(10, 15, 27, 0.95);
+            color: #e0e6ed;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 2000;
+            border: 1px solid rgba(100, 255, 218, 0.3);
+            backdrop-filter: blur(10px);
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-title">Harvard CS61 (Notes) x86 Assembly: Instructions, Flags & Jumps </div>
+    <div id="canvas">
+        <svg id="svg-layer">
+            <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                    <polygon points="0 0, 10 3, 0 6" class="arrow-marker"/>
+                </marker>
+            </defs>
+        </svg>
+        
+        <!-- Category Labels -->
+        <div class="category-label" style="left: 100px; top: 70px;">INSTRUCTIONS</div>
+        <div class="category-label" style="left: 650px; top: 70px;">FLAGS</div>
+        <div class="category-label" style="left: 1100px; top: 70px;">CONDITIONAL JUMPS</div>
+    </div>
+    
+    <div class="controls" id="controls">
+        <button class="minimize-btn" onclick="toggleMinimize('controls')">−</button>
+        <h2>Interactive Controls</h2>
+        <div class="control-content">
+            <div class="control-group">
+                <label>Select Instruction</label>
+                <select id="instruction-select">
+                <option value="">Choose an instruction...</option>
+                <optgroup label="Arithmetic">
+                    <option value="add">ADD - Addition</option>
+                    <option value="sub">SUB - Subtraction</option>
+                    <option value="cmp">CMP - Compare</option>
+                    <option value="inc">INC - Increment</option>
+                    <option value="dec">DEC - Decrement</option>
+                    <option value="mul">MUL - Multiply</option>
+                    <option value="neg">NEG - Negate</option>
+                </optgroup>
+                <optgroup label="Logical">
+                    <option value="and">AND - Logical AND</option>
+                    <option value="or">OR - Logical OR</option>
+                    <option value="xor">XOR - Exclusive OR</option>
+                    <option value="test">TEST - Test bits</option>
+                </optgroup>
+                <optgroup label="Shift">
+                    <option value="shl">SHL - Shift Left</option>
+                    <option value="shr">SHR - Shift Right</option>
+                    <option value="rol">ROL - Rotate Left</option>
+                </optgroup>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Select Jump</label>
+            <select id="jump-select">
+                <option value="">Choose a jump...</option>
+                <optgroup label="Equality">
+                    <option value="je">JE/JZ - Jump if Equal/Zero</option>
+                    <option value="jne">JNE/JNZ - Jump if Not Equal</option>
+                </optgroup>
+                <optgroup label="Signed Comparisons">
+                    <option value="jg">JG/JNLE - Jump if Greater</option>
+                    <option value="jl">JL/JNGE - Jump if Less</option>
+                    <option value="jge">JGE/JNL - Jump if Greater or Equal</option>
+                    <option value="jle">JLE/JNG - Jump if Less or Equal</option>
+                </optgroup>
+                <optgroup label="Unsigned Comparisons">
+                    <option value="ja">JA/JNBE - Jump if Above</option>
+                    <option value="jb">JB/JC - Jump if Below/Carry</option>
+                    <option value="jae">JAE/JNC - Jump if Above or Equal</option>
+                    <option value="jbe">JBE/JNA - Jump if Below or Equal</option>
+                </optgroup>
+                <optgroup label="Flag Tests">
+                    <option value="js">JS - Jump if Sign</option>
+                    <option value="jns">JNS - Jump if Not Sign</option>
+                    <option value="jo">JO - Jump if Overflow</option>
+                    <option value="jno">JNO - Jump if Not Overflow</option>
+                    <option value="jp">JP/JPE - Jump if Parity Even</option>
+                    <option value="jnp">JNP/JPO - Jump if Parity Odd</option>
+                </optgroup>
+            </select>
+        </div>
+        </div>
+    </div>
+    
+    <div class="info-panel" id="info-panel" style="display: none;">
+        <button class="minimize-btn" onclick="toggleMinimize('info-panel')">−</button>
+        <h3 id="info-title">Information</h3>
+        <div class="info-content" id="info-content"></div>
+    </div>
+    
+    <div class="legend" id="legend">
+        <button class="minimize-btn" onclick="toggleMinimize('legend')">−</button>
+        <div class="legend-item">
+            <div class="legend-color" style="background: linear-gradient(135deg, #ff6b6b, #ee5a24);"></div>
+            <span>Instructions</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: linear-gradient(135deg, #667eea, #764ba2);"></div>
+            <span>Flags</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: linear-gradient(135deg, #f7b731, #f2994a);"></div>
+            <span>Jumps</span>
+        </div>
+    </div>
+    
+    <div class="tooltip" id="tooltip" style="display: none;"></div>
+    
+    <script>
+        // Make elements draggable
+        function makeDraggable(element) {
+            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            element.onmousedown = dragMouseDown;
+            
+            function dragMouseDown(e) {
+                e = e || window.event;
+                if (e.target.classList.contains('minimize-btn') || 
+                    e.target.tagName === 'SELECT' || 
+                    e.target.tagName === 'OPTION') return;
+                    
+                e.preventDefault();
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                document.onmouseup = closeDragElement;
+                document.onmousemove = elementDrag;
+            }
+            
+            function elementDrag(e) {
+                e = e || window.event;
+                e.preventDefault();
+                pos1 = pos3 - e.clientX;
+                pos2 = pos4 - e.clientY;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                element.style.top = (element.offsetTop - pos2) + "px";
+                element.style.left = (element.offsetLeft - pos1) + "px";
+            }
+            
+            function closeDragElement() {
+                document.onmouseup = null;
+                document.onmousemove = null;
+            }
+        }
+        
+        // Toggle minimize
+        function toggleMinimize(elementId) {
+            const element = document.getElementById(elementId);
+            element.classList.toggle('minimized');
+            const btn = element.querySelector('.minimize-btn');
+            btn.textContent = element.classList.contains('minimized') ? '+' : '−';
+        }
+        
+        // Initialize draggable elements
+        makeDraggable(document.getElementById('controls'));
+        makeDraggable(document.getElementById('info-panel'));
+        makeDraggable(document.getElementById('legend'));
+        
+        // Data structure for the assembly map
+        const assemblyData = {
+            instructions: {
+                add: { 
+                    name: 'ADD', 
+                    desc: 'Addition', 
+                    flags: ['CF', 'PF', 'AF', 'ZF', 'SF', 'OF'],
+                    details: 'Adds two operands and stores result in destination.',
+                    flagDetails: {
+                        CF: 'Set if unsigned result doesn\'t fit (carry out from MSB)',
+                        OF: 'Set if signed result doesn\'t fit (sign bit of result differs from operands)',
+                        ZF: 'Set if result is zero',
+                        SF: 'Set if result is negative (MSB = 1)',
+                        PF: 'Set if low byte has even number of 1 bits',
+                        AF: 'Set if carry from bit 3 to bit 4'
+                    },
+                    example: 'ADD EAX, EBX  ; EAX = EAX + EBX'
+                },
+                sub: { 
+                    name: 'SUB', 
+                    desc: 'Subtraction', 
+                    flags: ['CF', 'PF', 'AF', 'ZF', 'SF', 'OF'],
+                    details: 'Subtracts source from destination (dest = dest - src).',
+                    flagDetails: {
+                        CF: 'Set if borrow required (unsigned underflow)',
+                        OF: 'Set if signed overflow occurs',
+                        ZF: 'Set if result is zero',
+                        SF: 'Set if result is negative',
+                        PF: 'Set if low byte has even parity',
+                        AF: 'Set if borrow from bit 4'
+                    },
+                    example: 'SUB EAX, EBX  ; EAX = EAX - EBX'
+                },
+                cmp: { 
+                    name: 'CMP', 
+                    desc: 'Compare', 
+                    flags: ['CF', 'PF', 'AF', 'ZF', 'SF', 'OF'],
+                    details: 'Performs subtraction without storing result, only sets flags.',
+                    flagDetails: {
+                        ZF: 'Set if operands are equal (result would be zero)',
+                        CF: 'Set if dest < src (unsigned)',
+                        SF: 'Set if result would be negative',
+                        OF: 'Set if signed comparison would overflow',
+                        PF: 'Set based on low byte parity of result',
+                        AF: 'Set if borrow from bit 4'
+                    },
+                    example: 'CMP EAX, EBX  ; Compare EAX with EBX'
+                },
+                inc: { 
+                    name: 'INC', 
+                    desc: 'Increment', 
+                    flags: ['PF', 'AF', 'ZF', 'SF', 'OF'],
+                    details: 'Increments operand by 1. Does NOT affect CF!',
+                    flagDetails: {
+                        ZF: 'Set if result is zero (useful for loop termination)',
+                        SF: 'Set if result becomes negative',
+                        OF: 'Set if increment causes signed overflow (0x7F→0x80)',
+                        PF: 'Set based on low byte parity',
+                        'CF': 'NOT MODIFIED - preserves carry for multi-precision math'
+                    },
+                    example: 'INC ECX  ; ECX = ECX + 1'
+                },
+                dec: { 
+                    name: 'DEC', 
+                    desc: 'Decrement', 
+                    flags: ['PF', 'AF', 'ZF', 'SF', 'OF'],
+                    details: 'Decrements operand by 1. Does NOT affect CF!',
+                    flagDetails: {
+                        ZF: 'Set if result is zero (common loop termination)',
+                        SF: 'Set if result becomes negative',
+                        OF: 'Set if decrement causes signed overflow (0x80→0x7F)',
+                        'CF': 'NOT MODIFIED - important for multi-precision operations'
+                    },
+                    example: 'DEC ECX  ; ECX = ECX - 1'
+                },
+                mul: { 
+                    name: 'MUL', 
+                    desc: 'Unsigned Multiply', 
+                    flags: ['CF', 'OF'],
+                    details: 'Unsigned multiplication. Result size is double operand size.',
+                    flagDetails: {
+                        'CF=OF': 'Both set if upper half of result is non-zero',
+                        'Result': 'Stored in EDX:EAX (64-bit result for 32-bit multiply)',
+                        'Other flags': 'SF, ZF, AF, PF are UNDEFINED after MUL'
+                    },
+                    example: 'MUL EBX  ; EDX:EAX = EAX * EBX'
+                },
+                neg: { 
+                    name: 'NEG', 
+                    desc: 'Negate', 
+                    flags: ['CF', 'PF', 'AF', 'ZF', 'SF', 'OF'],
+                    details: 'Two\'s complement negation (equivalent to 0 - operand).',
+                    flagDetails: {
+                        CF: 'Set to 1 unless operand is 0',
+                        OF: 'Set if operand is most negative value (e.g., NEG 0x80 causes OF)',
+                        ZF: 'Set if operand/result is 0',
+                        SF: 'Set if result is negative'
+                    },
+                    example: 'NEG EAX  ; EAX = -EAX'
+                },
+                and: { 
+                    name: 'AND', 
+                    desc: 'Logical AND', 
+                    flags: ['PF', 'ZF', 'SF'],
+                    details: 'Bitwise AND operation. Always clears CF and OF.',
+                    flagDetails: {
+                        'CF=OF': 'Always cleared to 0',
+                        ZF: 'Set if result is zero (no bits in common)',
+                        SF: 'Set if MSB of result is 1',
+                        PF: 'Set based on low byte parity',
+                        'Common use': 'Testing if specific bits are set'
+                    },
+                    example: 'AND EAX, 0xFF  ; Keep only low byte'
+                },
+                or: { 
+                    name: 'OR', 
+                    desc: 'Logical OR', 
+                    flags: ['PF', 'ZF', 'SF'],
+                    details: 'Bitwise OR operation. Always clears CF and OF.',
+                    flagDetails: {
+                        'CF=OF': 'Always cleared to 0',
+                        ZF: 'Set if result is zero (both operands were 0)',
+                        SF: 'Set if MSB of result is 1',
+                        PF: 'Set based on low byte parity'
+                    },
+                    example: 'OR EAX, EBX  ; EAX = EAX | EBX'
+                },
+                xor: { 
+                    name: 'XOR', 
+                    desc: 'Exclusive OR', 
+                    flags: ['PF', 'ZF', 'SF'],
+                    details: 'Bitwise XOR. Always clears CF and OF. Same value XOR itself = 0.',
+                    flagDetails: {
+                        'CF=OF': 'Always cleared to 0',
+                        ZF: 'Set if result is zero (operands were equal)',
+                        SF: 'Set if MSB of result is 1',
+                        'XOR trick': 'XOR EAX,EAX is fastest way to zero a register'
+                    },
+                    example: 'XOR EAX, EAX  ; Zero out EAX'
+                },
+                test: { 
+                    name: 'TEST', 
+                    desc: 'Test bits', 
+                    flags: ['PF', 'ZF', 'SF'],
+                    details: 'Performs AND without storing result, only sets flags.',
+                    flagDetails: {
+                        'CF=OF': 'Always cleared to 0',
+                        ZF: 'Set if no bits in common (result would be 0)',
+                        SF: 'Set if MSB would be set in result',
+                        'Common use': 'Check if specific bits are set without modifying'
+                    },
+                    example: 'TEST EAX, 0x80  ; Test if bit 7 set'
+                },
+                shl: { 
+                    name: 'SHL/SAL', 
+                    desc: 'Shift Left', 
+                    flags: ['CF', 'PF', 'ZF', 'SF', 'OF'],
+                    details: 'Shifts bits left, filling with zeros. Equivalent to multiplication by 2^n.',
+                    flagDetails: {
+                        CF: 'Last bit shifted out',
+                        OF: 'Set if sign bit changes (only defined for 1-bit shifts)',
+                        ZF: 'Set if result is zero',
+                        SF: 'Set if MSB of result is 1',
+                        'Performance': 'Faster than MUL for powers of 2'
+                    },
+                    example: 'SHL EAX, 1  ; Multiply by 2'
+                },
+                shr: { 
+                    name: 'SHR', 
+                    desc: 'Logical Shift Right', 
+                    flags: ['CF', 'PF', 'ZF', 'SF', 'OF'],
+                    details: 'Shifts bits right, filling with zeros. Unsigned division by 2^n.',
+                    flagDetails: {
+                        CF: 'Last bit shifted out',
+                        OF: 'Set to MSB of original value (only for 1-bit shifts)',
+                        ZF: 'Set if result is zero',
+                        SF: 'Always 0 after SHR (MSB filled with 0)',
+                        'vs SAR': 'Use SAR for signed division'
+                    },
+                    example: 'SHR EAX, 1  ; Divide by 2 (unsigned)'
+                },
+                rol: { 
+                    name: 'ROL', 
+                    desc: 'Rotate Left', 
+                    flags: ['CF', 'OF'],
+                    details: 'Rotates bits left. MSB wraps to LSB position.',
+                    flagDetails: {
+                        CF: 'Set to bit rotated out of MSB',
+                        OF: 'For 1-bit rotate: set if MSB changes',
+                        'Other flags': 'ZF, SF, PF, AF are NOT affected',
+                        'Use case': 'Bit manipulation, checksums, crypto'
+                    },
+                    example: 'ROL EAX, 1  ; Rotate left by 1'
+                }
+            },
+            
+            flags: {
+                CF: { 
+                    name: 'CF', 
+                    desc: 'Carry', 
+                    bit: 0,
+                    details: 'Carry Flag - Set when arithmetic operation generates carry (addition) or borrow (subtraction) from MSB. Used for unsigned comparisons and multi-precision arithmetic.'
+                },
+                ZF: { 
+                    name: 'ZF', 
+                    desc: 'Zero', 
+                    bit: 6,
+                    details: 'Zero Flag - Set when result of operation is zero. Most commonly used flag for equality checks and loop termination.'
+                },
+                SF: { 
+                    name: 'SF', 
+                    desc: 'Sign', 
+                    bit: 7,
+                    details: 'Sign Flag - Set when MSB of result is 1 (negative in two\'s complement). Used with OF for signed comparisons.'
+                },
+                OF: { 
+                    name: 'OF', 
+                    desc: 'Overflow', 
+                    bit: 11,
+                    details: 'Overflow Flag - Set when signed arithmetic result doesn\'t fit. Indicates two\'s complement overflow.'
+                },
+                PF: { 
+                    name: 'PF', 
+                    desc: 'Parity', 
+                    bit: 2,
+                    details: 'Parity Flag - Set when low byte has even number of 1 bits. Used for error checking.'
+                },
+                AF: { 
+                    name: 'AF', 
+                    desc: 'Auxiliary', 
+                    bit: 4,
+                    details: 'Auxiliary Flag - Set on carry from bit 3 to bit 4. Used for BCD arithmetic.'
+                }
+            },
+            
+            jumps: {
+                je: { 
+                    name: 'JE/JZ', 
+                    desc: 'Jump if Equal/Zero', 
+                    flags: ['ZF'], 
+                    condition: 'ZF = 1',
+                    dataType: 'Any data type',
+                    usage: 'After CMP or arithmetic operations. Used for equality checks, loop termination, or checking if a value is zero.',
+                    example: 'CMP EAX, EBX\nJE equal_label  ; Jump if EAX == EBX',
+                    jumpDecision: [
+                        { condition: 'If X = Y', jumps: true },
+                        { condition: 'If X > Y', jumps: false },
+                        { condition: 'If X < Y', jumps: false }
+                    ]
+                },
+                jne: { 
+                    name: 'JNE/JNZ', 
+                    desc: 'Jump if Not Equal', 
+                    flags: ['ZF'], 
+                    condition: 'ZF = 0',
+                    dataType: 'Any data type',
+                    usage: 'Opposite of JE. Used for inequality checks or continuing loops while counter is non-zero.',
+                    example: 'DEC ECX\nJNZ loop_start  ; Continue loop if ECX != 0',
+                    jumpDecision: [
+                        { condition: 'If X = Y', jumps: false },
+                        { condition: 'If X > Y', jumps: true },
+                        { condition: 'If X < Y', jumps: true }
+                    ]
+                },
+                jg: { 
+                    name: 'JG/JNLE', 
+                    desc: 'Jump if Greater (signed)', 
+                    flags: ['ZF', 'SF', 'OF'], 
+                    condition: 'ZF=0 AND SF=OF',
+                    dataType: 'Signed integers (two\'s complement)',
+                    usage: 'For signed comparisons. Correctly handles negative numbers.',
+                    example: 'CMP EAX, -10\nJG positive  ; Jump if EAX > -10',
+                    jumpDecision: [
+                        { condition: 'If X > Y (signed)', jumps: true },
+                        { condition: 'If X = Y', jumps: false },
+                        { condition: 'If X < Y (signed)', jumps: false },
+                        { condition: 'e.g: CMP 5, 3 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP -5, -10 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 3, 5 → NO JUMP', jumps: false }
+                    ]
+                },
+                jl: { 
+                    name: 'JL/JNGE', 
+                    desc: 'Jump if Less (signed)', 
+                    flags: ['SF', 'OF'], 
+                    condition: 'SF ≠ OF',
+                    dataType: 'Signed integers (two\'s complement)',
+                    usage: 'For signed comparisons. Handles overflow cases correctly.',
+                    example: 'CMP AL, BL\nJL smaller  ; Jump if AL < BL (signed)',
+                    jumpDecision: [
+                        { condition: 'If X < Y (signed)', jumps: true },
+                        { condition: 'If X = Y', jumps: false },
+                        { condition: 'If X > Y (signed)', jumps: false },
+                        { condition: 'e.g: CMP 3, 5 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP -10, -5 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 5, 3 → NO JUMP', jumps: false }
+                    ]
+                },
+                jge: { 
+                    name: 'JGE/JNL', 
+                    desc: 'Jump if Greater or Equal (signed)', 
+                    flags: ['SF', 'OF'], 
+                    condition: 'SF = OF',
+                    dataType: 'Signed integers',
+                    usage: 'Signed comparison for >= checks. Common in range validation.',
+                    example: 'CMP EAX, 0\nJGE non_negative  ; Jump if EAX >= 0',
+                    jumpDecision: [
+                        { condition: 'If X ≥ Y (signed)', jumps: true },
+                        { condition: 'If X = Y', jumps: true },
+                        { condition: 'If X > Y (signed)', jumps: true },
+                        { condition: 'If X < Y (signed)', jumps: false },
+                        { condition: 'e.g: CMP 5, 3 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 5, 5 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 3, 5 → NO JUMP', jumps: false }
+                    ]
+                },
+                jle: { 
+                    name: 'JLE/JNG', 
+                    desc: 'Jump if Less or Equal (signed)', 
+                    flags: ['ZF', 'SF', 'OF'], 
+                    condition: 'ZF=1 OR SF≠OF',
+                    dataType: 'Signed integers',
+                    usage: 'Signed comparison for <= checks. Used for upper bound checks.',
+                    example: 'CMP EAX, 100\nJLE in_range  ; Jump if EAX <= 100',
+                    jumpDecision: [
+                        { condition: 'If X ≤ Y (signed)', jumps: true },
+                        { condition: 'If X = Y', jumps: true },
+                        { condition: 'If X < Y (signed)', jumps: true },
+                        { condition: 'If X > Y (signed)', jumps: false },
+                        { condition: 'e.g: CMP 3, 5 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 5, 5 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 5, 3 → NO JUMP', jumps: false }
+                    ]
+                },
+                ja: { 
+                    name: 'JA/JNBE', 
+                    desc: 'Jump if Above (unsigned)', 
+                    flags: ['CF', 'ZF'], 
+                    condition: 'CF=0 AND ZF=0',
+                    dataType: 'Unsigned integers, addresses, sizes',
+                    usage: 'For unsigned comparisons. Common with memory addresses and sizes.',
+                    example: 'CMP ECX, array_size\nJA out_of_bounds  ; Jump if index > size',
+                    jumpDecision: [
+                        { condition: 'If X > Y (unsigned)', jumps: true },
+                        { condition: 'If X = Y', jumps: false },
+                        { condition: 'If X < Y (unsigned)', jumps: false },
+                        { condition: 'e.g: CMP 5, 3 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 0xFF, 0x10 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 3, 5 → NO JUMP', jumps: false }
+                    ]
+                },
+                jb: { 
+                    name: 'JB/JC/JNAE', 
+                    desc: 'Jump if Below (unsigned)', 
+                    flags: ['CF'], 
+                    condition: 'CF = 1',
+                    dataType: 'Unsigned integers, addresses',
+                    usage: 'For unsigned comparisons. JC variant used after arithmetic for carry detection.',
+                    example: 'ADD EAX, EBX\nJC overflow  ; Jump if addition overflowed',
+                    jumpDecision: [
+                        { condition: 'If X < Y (unsigned)', jumps: true },
+                        { condition: 'If X = Y', jumps: false },
+                        { condition: 'If X > Y (unsigned)', jumps: false },
+                        { condition: 'e.g: CMP 3, 5 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 0x10, 0xFF → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 5, 3 → NO JUMP', jumps: false }
+                    ]
+                },
+                jae: { 
+                    name: 'JAE/JNC/JNB', 
+                    desc: 'Jump if Above or Equal (unsigned)', 
+                    flags: ['CF'], 
+                    condition: 'CF = 0',
+                    dataType: 'Unsigned integers',
+                    usage: 'Unsigned >= comparison. JNC variant checks for no carry after arithmetic.',
+                    example: 'SUB EAX, EBX\nJNC no_borrow  ; Jump if no borrow occurred',
+                    jumpDecision: [
+                        { condition: 'If X ≥ Y (unsigned)', jumps: true },
+                        { condition: 'If X = Y', jumps: true },
+                        { condition: 'If X > Y (unsigned)', jumps: true },
+                        { condition: 'If X < Y (unsigned)', jumps: false },
+                        { condition: 'e.g: CMP 5, 3 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 5, 5 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 3, 5 → NO JUMP', jumps: false }
+                    ]
+                },
+                jbe: { 
+                    name: 'JBE/JNA', 
+                    desc: 'Jump if Below or Equal (unsigned)', 
+                    flags: ['CF', 'ZF'], 
+                    condition: 'CF=1 OR ZF=1',
+                    dataType: 'Unsigned integers',
+                    usage: 'Unsigned <= comparison. Common in bounds checking.',
+                    example: 'CMP AL, 255\nJBE valid_byte  ; Jump if AL <= 255',
+                    jumpDecision: [
+                        { condition: 'If X ≤ Y (unsigned)', jumps: true },
+                        { condition: 'If X = Y', jumps: true },
+                        { condition: 'If X < Y (unsigned)', jumps: true },
+                        { condition: 'If X > Y (unsigned)', jumps: false },
+                        { condition: 'e.g: CMP 3, 5 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 5, 5 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 5, 3 → NO JUMP', jumps: false }
+                    ]
+                },
+                js: { 
+                    name: 'JS', 
+                    desc: 'Jump if Sign (negative)', 
+                    flags: ['SF'], 
+                    condition: 'SF = 1',
+                    dataType: 'Signed integers',
+                    usage: 'Checks if result is negative. Used after arithmetic or TEST instructions.',
+                    example: 'TEST EAX, EAX\nJS negative  ; Jump if EAX is negative',
+                    jumpDecision: [
+                        { condition: 'If result is negative (MSB = 1)', jumps: true },
+                        { condition: 'If result is positive or zero', jumps: false },
+                        { condition: 'After CMP X,Y: jumps if X-Y < 0', jumps: true }
+                    ]
+                },
+                jns: { 
+                    name: 'JNS', 
+                    desc: 'Jump if Not Sign (positive/zero)', 
+                    flags: ['SF'], 
+                    condition: 'SF = 0',
+                    dataType: 'Signed integers',
+                    usage: 'Checks if result is non-negative (positive or zero).',
+                    example: 'SUB EAX, EBX\nJNS result_positive  ; Jump if result >= 0',
+                    jumpDecision: [
+                        { condition: 'If result is positive or zero (MSB = 0)', jumps: true },
+                        { condition: 'If result is negative', jumps: false },
+                        { condition: 'After CMP X,Y: jumps if X-Y ≥ 0', jumps: true }
+                    ]
+                },
+                jo: { 
+                    name: 'JO', 
+                    desc: 'Jump if Overflow', 
+                    flags: ['OF'], 
+                    condition: 'OF = 1',
+                    dataType: 'Signed integers',
+                    usage: 'Detects signed arithmetic overflow. Critical for safe arithmetic.',
+                    example: 'ADD AL, BL\nJO overflow_handler  ; Jump if signed overflow',
+                    jumpDecision: [
+                        { condition: 'If signed overflow occurred', jumps: true },
+                        { condition: 'If no signed overflow', jumps: false },
+                        { condition: 'e.g: 127 + 1 in 8-bit → JUMPS', jumps: true },
+                        { condition: 'e.g: -128 - 1 in 8-bit → JUMPS', jumps: true }
+                    ]
+                },
+                jno: { 
+                    name: 'JNO', 
+                    desc: 'Jump if No Overflow', 
+                    flags: ['OF'], 
+                    condition: 'OF = 0',
+                    dataType: 'Signed integers',
+                    usage: 'Ensures no signed overflow occurred. Used for validation.',
+                    example: 'IMUL EAX, EBX\nJNO result_valid  ; Jump if no overflow',
+                    jumpDecision: [
+                        { condition: 'If no signed overflow', jumps: true },
+                        { condition: 'If signed overflow occurred', jumps: false }
+                    ]
+                },
+                jp: { 
+                    name: 'JP/JPE', 
+                    desc: 'Jump if Parity Even', 
+                    flags: ['PF'], 
+                    condition: 'PF = 1',
+                    dataType: 'Byte data (low 8 bits)',
+                    usage: 'Checks even number of 1 bits in low byte. Used for error detection.',
+                    example: 'XOR AL, checksum\nJP parity_ok  ; Jump if even parity',
+                    jumpDecision: [
+                        { condition: 'If low byte has even # of 1 bits', jumps: true },
+                        { condition: 'If low byte has odd # of 1 bits', jumps: false }
+                    ]
+                },
+                jnp: { 
+                    name: 'JNP/JPO', 
+                    desc: 'Jump if Parity Odd', 
+                    flags: ['PF'], 
+                    condition: 'PF = 0',
+                    dataType: 'Byte data (low 8 bits)',
+                    usage: 'Checks odd number of 1 bits in low byte. Used in data validation.',
+                    example: 'TEST AL, AL\nJNP odd_parity  ; Jump if odd parity',
+                    jumpDecision: [
+                        { condition: 'If low byte has odd # of 1 bits', jumps: true },
+                        { condition: 'If low byte has even # of 1 bits', jumps: false }
+                    ]
+                }
+            }
+        };
+        
+        // Node positions
+        const layout = {
+            instructions: { x: 100, y: 100, spacing: 50 },
+            flags: { x: 650, y: 100, spacing: 90 },
+            jumps: { x: 1100, y: 100, spacing: 45 }
+        };
+        
+        // Create nodes
+        function createNodes() {
+            const canvas = document.getElementById('canvas');
+            
+            // Create instruction nodes
+            Object.entries(assemblyData.instructions).forEach(([key, inst], index) => {
+                const node = document.createElement('div');
+                node.className = 'node instruction-node';
+                node.id = `inst-${key}`;
+                node.textContent = inst.name;
+                node.style.left = `${layout.instructions.x}px`;
+                node.style.top = `${layout.instructions.y + index * layout.instructions.spacing}px`;
+                node.dataset.key = key;
+                node.dataset.type = 'instruction';
+                canvas.appendChild(node);
+            });
+            
+            // Create flag nodes
+            Object.entries(assemblyData.flags).forEach(([key, flag], index) => {
+                const node = document.createElement('div');
+                node.className = 'node flag-node';
+                node.id = `flag-${key}`;
+                node.innerHTML = `
+                    <div class="flag-symbol">${flag.name}</div>
+                    <div class="flag-desc">${flag.desc}</div>
+                `;
+                node.style.left = `${layout.flags.x}px`;
+                node.style.top = `${layout.flags.y + index * layout.flags.spacing}px`;
+                node.dataset.key = key;
+                node.dataset.type = 'flag';
+                canvas.appendChild(node);
+            });
+            
+            // Create jump nodes
+            Object.entries(assemblyData.jumps).forEach(([key, jump], index) => {
+                const node = document.createElement('div');
+                node.className = 'node jump-node';
+                node.id = `jump-${key}`;
+                node.textContent = jump.name;
+                node.style.left = `${layout.jumps.x}px`;
+                node.style.top = `${layout.jumps.y + index * layout.jumps.spacing}px`;
+                node.dataset.key = key;
+                node.dataset.type = 'jump';
+                canvas.appendChild(node);
+            });
+        }
+        
+        // Create arrows
+        function createArrow(from, to, className) {
+            const fromRect = from.getBoundingClientRect();
+            const toRect = to.getBoundingClientRect();
+            const canvasRect = document.getElementById('canvas').getBoundingClientRect();
+            
+            const x1 = fromRect.right - canvasRect.left;
+            const y1 = fromRect.top + fromRect.height / 2 - canvasRect.top;
+            const x2 = toRect.left - canvasRect.left;
+            const y2 = toRect.top + toRect.height / 2 - canvasRect.top;
+            
+            // Create curved path
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const cx = x1 + dx / 2;
+            const cy = y1 + dy / 2 - Math.abs(dx) * 0.1;
+            
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`);
+            path.setAttribute('class', `arrow-path ${className}`);
+            path.setAttribute('marker-end', 'url(#arrowhead)');
+            path.setAttribute('data-from', from.id);
+            path.setAttribute('data-to', to.id);
+            
+            return path;
+        }
+        
+        // Clear all arrows
+        function clearArrows() {
+            const svg = document.getElementById('svg-layer');
+            svg.querySelectorAll('.arrow-path').forEach(path => path.remove());
+        }
+        
+        // Show connections for instruction
+        function showInstructionConnections(instKey) {
+            // Update the select dropdown if called from click
+            document.getElementById('instruction-select').value = instKey;
+            showCombinedConnections();
+        }
+        
+        // Show connections for jump
+        function showJumpConnections(jumpKey) {
+            // Update the select dropdown if called from click
+            document.getElementById('jump-select').value = jumpKey;
+            showCombinedConnections();
+        }
+        
+        // Combined display function for instruction + jump
+        function showCombinedConnections() {
+            clearArrows();
+            clearHighlights();
+            
+            const instSelect = document.getElementById('instruction-select');
+            const jumpSelect = document.getElementById('jump-select');
+            const svg = document.getElementById('svg-layer');
+            
+            // Track which flags are involved
+            const activeFlags = new Set();
+            
+            // Handle instruction selection
+            if (instSelect.value) {
+                const inst = assemblyData.instructions[instSelect.value];
+                const instNode = document.getElementById(`inst-${instSelect.value}`);
+                
+                instNode.classList.add('glow-effect');
+                instNode.style.opacity = '1';
+                
+                // Draw arrows to flags
+                inst.flags.forEach(flagKey => {
+                    activeFlags.add(flagKey);
+                    const flagNode = document.getElementById(`flag-${flagKey}`);
+                    if (flagNode) {
+                        const arrow = createArrow(instNode, flagNode, 'inst-to-flag active');
+                        svg.appendChild(arrow);
+                    }
+                });
+                
+                showInfo('instruction', inst);
+            }
+            
+            // Handle jump selection
+            if (jumpSelect.value) {
+                const jump = assemblyData.jumps[jumpSelect.value];
+                const jumpNode = document.getElementById(`jump-${jumpSelect.value}`);
+                
+                jumpNode.classList.add('glow-effect');
+                jumpNode.style.opacity = '1';
+                
+                // Highlight flags that this jump checks
+                jump.flags.forEach(flagKey => {
+                    activeFlags.add(flagKey);
+                    const flagNode = document.getElementById(`flag-${flagKey}`);
+                    if (flagNode) {
+                        const arrow = createArrow(flagNode, jumpNode, 'flag-to-jump active');
+                        svg.appendChild(arrow);
+                    }
+                });
+                
+                // If both are selected, show both info panels
+                if (instSelect.value) {
+                    // Create a second info panel for the jump
+                    showJumpInfoSecondPanel(jump);
+                } else {
+                    showInfo('jump', jump);
+                }
+            }
+            
+            // Highlight all active flags
+            activeFlags.forEach(flagKey => {
+                const flagNode = document.getElementById(`flag-${flagKey}`);
+                if (flagNode) {
+                    flagNode.classList.add('glow-effect');
+                    flagNode.style.opacity = '1';
+                }
+            });
+            
+            // If neither is selected, reset
+            if (!instSelect.value && !jumpSelect.value) {
+                document.querySelectorAll('.node').forEach(node => node.style.opacity = '1');
+                document.getElementById('info-panel').style.display = 'none';
+                const secondPanel = document.getElementById('info-panel-2');
+                if (secondPanel) secondPanel.remove();
+            }
+        }
+        
+        // Create second info panel for jump when both are selected
+        function showJumpInfoSecondPanel(jump) {
+            // Remove existing second panel if any
+            let panel2 = document.getElementById('info-panel-2');
+            if (panel2) panel2.remove();
+            
+            // Clone the first panel
+            const panel1 = document.getElementById('info-panel');
+            panel2 = panel1.cloneNode(true);
+            panel2.id = 'info-panel-2';
+            panel2.style.top = '450px'; // Position below first panel
+            document.body.appendChild(panel2);
+            
+            // Make it draggable
+            makeDraggable(panel2);
+            
+            // Update content for jump
+            const title = panel2.querySelector('h3');
+            const content = panel2.querySelector('.info-content');
+            
+            title.textContent = jump.name;
+            
+            // Generate jump decision table
+            let decisionTable = '';
+            if (jump.jumpDecision) {
+                decisionTable = `
+                <div style="background: #0f1923; padding: 15px; border-radius: 8px; margin: 10px 0; border: 2px solid #ffd93d;">
+                    <p style="color: #ffd93d; font-weight: bold; margin-bottom: 10px;">🎯 Quick Jump Decision (after CMP X, Y):</p>
+                    <p style="color: #64ffda; font-size: 12px; margin-bottom: 10px;">Note: CMP X, Y performs X - Y internally</p>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        ${jump.jumpDecision.map(row => `
+                        <tr style="border-bottom: 1px solid #2a3f5f;">
+                            <td style="padding: 8px; color: #8892b0;">${row.condition}</td>
+                            <td style="padding: 8px; text-align: center; font-weight: bold; color: ${row.jumps ? '#64ffda' : '#ff6b6b'};">
+                                ${row.jumps ? '✓ JUMPS' : '✗ NO JUMP'}
+                            </td>
+                        </tr>
+                        `).join('')}
+                    </table>
+                </div>
+                `;
+            }
+            
+            content.innerHTML = `
+                <p><strong>Description:</strong> ${jump.desc}</p>
+                <p><strong>Condition:</strong> ${jump.condition}</p>
+                <p><strong>Flags checked:</strong> ${jump.flags.join(', ')}</p>
+                ${decisionTable}
+                <p><strong>Data type:</strong> ${jump.dataType}</p>
+                <p><strong>Usage:</strong> ${jump.usage}</p>
+                <p><strong>Example:</strong></p>
+                <code style="display: block; background: #1a2332; padding: 8px; border-radius: 4px; margin-top: 5px; white-space: pre-wrap; word-wrap: break-word;">
+${jump.example}
+                </code>
+            `;
+        }
+        function showFlagConnections(flagKey) {
+            clearArrows();
+            clearHighlights();
+            
+            const flagNode = document.getElementById(`flag-${flagKey}`);
+            const svg = document.getElementById('svg-layer');
+            
+            flagNode.classList.add('glow-effect');
+            
+            // Find instructions that affect this flag
+            Object.entries(assemblyData.instructions).forEach(([instKey, inst]) => {
+                if (inst.flags.includes(flagKey)) {
+                    const instNode = document.getElementById(`inst-${instKey}`);
+                    if (instNode) {
+                        instNode.style.opacity = '1';
+                        const arrow = createArrow(instNode, flagNode, 'inst-to-flag active');
+                        svg.appendChild(arrow);
+                    }
+                }
+            });
+            
+            // Find jumps that use this flag
+            Object.entries(assemblyData.jumps).forEach(([jumpKey, jump]) => {
+                if (jump.flags.includes(flagKey)) {
+                    const jumpNode = document.getElementById(`jump-${jumpKey}`);
+                    if (jumpNode) {
+                        jumpNode.style.opacity = '1';
+                        const arrow = createArrow(flagNode, jumpNode, 'flag-to-jump active');
+                        svg.appendChild(arrow);
+                    }
+                }
+            });
+            
+            showInfo('flag', assemblyData.flags[flagKey]);
+        }
+        
+        // Clear highlights
+        function clearHighlights() {
+            document.querySelectorAll('.node').forEach(node => {
+                node.classList.remove('glow-effect');
+                node.style.opacity = '0.3';
+            });
+        }
+        
+        // Show info panel
+        function showInfo(type, data) {
+            const panel = document.getElementById('info-panel');
+            const title = document.getElementById('info-title');
+            const content = document.getElementById('info-content');
+            
+            panel.style.display = 'block';
+            
+            if (type === 'instruction') {
+                title.textContent = `${data.name} - ${data.desc}`;
+                let flagDetailsHtml = '';
+                if (data.flagDetails) {
+                    flagDetailsHtml = '<p><strong>Flag Behavior:</strong></p><ul style="margin-left: 20px;">';
+                    Object.entries(data.flagDetails).forEach(([flag, behavior]) => {
+                        flagDetailsHtml += `<li><strong>${flag}:</strong> ${behavior}</li>`;
+                    });
+                    flagDetailsHtml += '</ul>';
+                }
+                content.innerHTML = `
+                    <p><strong>Description:</strong> ${data.details}</p>
+                    <p><strong>Flags affected:</strong> ${data.flags.join(', ')}</p>
+                    ${flagDetailsHtml}
+                    <p><strong>Example:</strong></p>
+                    <code style="display: block; background: #1a2332; padding: 8px; border-radius: 4px; margin-top: 5px;">
+                        ${data.example}
+                    </code>
+                `;
+            } else if (type === 'flag') {
+                title.textContent = `${data.name} - ${data.desc} Flag`;
+                content.innerHTML = `
+                    <p><strong>Bit position:</strong> ${data.bit}</p>
+                    <p><strong>Description:</strong> ${data.details}</p>
+                `;
+            } else             if (type === 'jump') {
+                title.textContent = data.name;
+                
+                // Generate jump decision table based on jump type
+                let decisionTable = '';
+                if (data.jumpDecision) {
+                    decisionTable = `
+                    <div style="background: #0f1923; padding: 15px; border-radius: 8px; margin: 10px 0; border: 2px solid #ffd93d;">
+                        <p style="color: #ffd93d; font-weight: bold; margin-bottom: 10px;">🎯 Quick Jump Decision (after CMP X, Y):</p>
+                        <p style="color: #64ffda; font-size: 12px; margin-bottom: 10px;">Note: CMP X, Y performs X - Y internally</p>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            ${data.jumpDecision.map(row => `
+                            <tr style="border-bottom: 1px solid #2a3f5f;">
+                                <td style="padding: 8px; color: #8892b0;">${row.condition}</td>
+                                <td style="padding: 8px; text-align: center; font-weight: bold; color: ${row.jumps ? '#64ffda' : '#ff6b6b'};">
+                                    ${row.jumps ? '✓ JUMPS' : '✗ NO JUMP'}
+                                </td>
+                            </tr>
+                            `).join('')}
+                        </table>
+                    </div>
+                    `;
+                }
+                
+                content.innerHTML = `
+                    <p><strong>Description:</strong> ${data.desc}</p>
+                    <p><strong>Condition:</strong> ${data.condition}</p>
+                    <p><strong>Flags checked:</strong> ${data.flags.join(', ')}</p>
+                    ${decisionTable}
+                    <p><strong>Data type:</strong> ${data.dataType}</p>
+                    <p><strong>Usage:</strong> ${data.usage}</p>
+                    <p><strong>Example:</strong></p>
+                    <code style="display: block; background: #1a2332; padding: 8px; border-radius: 4px; margin-top: 5px; white-space: pre-wrap; word-wrap: break-word;">
+${data.example}
+                    </code>
+                `;
+            }
+        }
+        
+        // Initialize
+        createNodes();
+        
+        // Event handlers
+        document.getElementById('instruction-select').addEventListener('change', (e) => {
+            showCombinedConnections();
+        });
+        
+        document.getElementById('jump-select').addEventListener('change', (e) => {
+            showCombinedConnections();
+        });
+        
+        // Node click handlers
+        document.addEventListener('click', (e) => {
+            const node = e.target.closest('.node');
+            if (node) {
+                const type = node.dataset.type;
+                const key = node.dataset.key;
+                
+                if (type === 'instruction') {
+                    showInstructionConnections(key);
+                } else if (type === 'flag') {
+                    showFlagConnections(key);
+                } else if (type === 'jump') {
+                    showJumpConnections(key);
+                }
+            }
+        });
+        
+        // Tooltip
+        const tooltip = document.getElementById('tooltip');
+        document.addEventListener('mousemove', (e) => {
+            const node = e.target.closest('.node');
+            if (node) {
+                const type = node.dataset.type;
+                const key = node.dataset.key;
+                let text = '';
+                
+                if (type === 'instruction') {
+                    text = assemblyData.instructions[key].desc;
+                } else if (type === 'flag') {
+                    text = `Bit ${assemblyData.flags[key].bit}: ${assemblyData.flags[key].desc}`;
+                } else if (type === 'jump') {
+                    text = assemblyData.jumps[key].condition;
+                }
+                
+                tooltip.textContent = text;
+                tooltip.style.display = 'block';
+                tooltip.style.left = e.pageX + 10 + 'px';
+                tooltip.style.top = e.pageY - 30 + 'px';
+            } else {
+                tooltip.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
