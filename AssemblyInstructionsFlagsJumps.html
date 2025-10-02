@@ -1177,37 +1177,456 @@
             }
         }
         
+        // Generate instruction-specific usage text
+        function getInstructionSpecificUsage(jumpKey, instKey) {
+            if (!instKey) return assemblyData.jumps[jumpKey].usage;
+
+            const usageMap = {
+                je: {
+                    add: 'After ADD: checks if result equals zero. Useful for detecting when two values sum to zero.',
+                    sub: 'After SUB: checks if operands were equal (result is zero). Common for equality testing.',
+                    cmp: 'After CMP: checks if operands are equal. Most common usage for equality comparisons.',
+                    inc: 'After INC: checks if value incremented to zero (was -1). Rare but useful in certain loops.',
+                    dec: 'After DEC: checks if counter reached zero. Common for loop termination.',
+                    and: 'After AND: checks if no common bits (result is zero). Used for bit mask testing.',
+                    or: 'After OR: checks if both operands were zero. Rare usage.',
+                    xor: 'After XOR: checks if operands are identical (XOR produces zero). Fast equality check.',
+                    test: 'After TEST: checks if no bits in common. Used for checking if specific bits are clear.'
+                },
+                jne: {
+                    add: 'After ADD: checks if result is non-zero. Useful for validation.',
+                    sub: 'After SUB: checks if operands differ. Alternative to CMP for inequality.',
+                    cmp: 'After CMP: checks if operands are not equal. Most common inequality check.',
+                    dec: 'After DEC: continues loop while counter is non-zero. Very common loop pattern.',
+                    xor: 'After XOR: checks if operands differ. Used in comparison logic.',
+                    test: 'After TEST: checks if any common bits exist.'
+                },
+                jg: {
+                    cmp: 'After CMP: signed greater-than comparison. Used for signed integers with negative values.',
+                    sub: 'After SUB: checks if result > 0 (signed). Alternative to CMP for signed comparisons.'
+                },
+                jl: {
+                    cmp: 'After CMP: signed less-than comparison. Handles negative numbers correctly.',
+                    sub: 'After SUB: checks if result < 0 (signed). Determines if first operand was smaller.'
+                },
+                jge: {
+                    cmp: 'After CMP: signed >= comparison. Common for range validation (e.g., value >= 0).',
+                    sub: 'After SUB: checks if result >= 0 (signed). Tests if first operand was >= second.'
+                },
+                jle: {
+                    cmp: 'After CMP: signed <= comparison. Used for upper bound checks in signed ranges.',
+                    sub: 'After SUB: checks if result <= 0 (signed).'
+                },
+                ja: {
+                    cmp: 'After CMP: unsigned greater-than. Essential for addresses, array indices, and sizes.',
+                    add: 'After ADD: checks for valid addition with no carry and non-zero result. Rare usage.',
+                    sub: 'After SUB: unsigned comparison checking if result > 0 without borrow.'
+                },
+                jb: {
+                    cmp: 'After CMP: unsigned less-than. Common for array bounds and address comparisons.',
+                    add: 'After ADD: detects unsigned overflow (carry set). Critical for safe arithmetic.',
+                    sub: 'After SUB: detects if borrow occurred (first < second unsigned).'
+                },
+                jae: {
+                    cmp: 'After CMP: unsigned >= comparison. Used for lower bound checks.',
+                    add: 'After ADD: checks for no carry (valid result). Used in safe addition validation.',
+                    sub: 'After SUB: checks for no borrow (first >= second unsigned).'
+                },
+                jbe: {
+                    cmp: 'After CMP: unsigned <= comparison. Essential for array bounds checking.',
+                    add: 'After ADD: checks if carry occurred OR result is zero. Uncommon usage.',
+                    sub: 'After SUB: checks if borrow OR zero (first <= second unsigned).'
+                },
+                js: {
+                    add: 'After ADD: checks if result is negative (MSB set). Used in signed arithmetic.',
+                    sub: 'After SUB: checks if result is negative. Determines if first < second (signed).',
+                    test: 'After TEST: checks if MSB is set. Common for sign testing without modifying value.',
+                    and: 'After AND: checks if result has MSB set.',
+                    or: 'After OR: checks if result has MSB set.',
+                    xor: 'After XOR: checks if result has MSB set.'
+                },
+                jns: {
+                    add: 'After ADD: checks if result is non-negative (positive or zero).',
+                    sub: 'After SUB: checks if result >= 0. Determines if first >= second (signed).',
+                    test: 'After TEST: checks if MSB is clear. Common for checking positive values.',
+                    and: 'After AND: checks if MSB is clear in result.'
+                },
+                jo: {
+                    add: 'After ADD: detects signed overflow. Critical for safe signed addition.',
+                    sub: 'After SUB: detects signed overflow. Prevents incorrect signed arithmetic results.',
+                    inc: 'After INC: detects overflow (e.g., 127 -> -128 in 8-bit). Rare but important.',
+                    dec: 'After DEC: detects overflow (e.g., -128 -> 127 in 8-bit). Rare usage.'
+                },
+                jno: {
+                    add: 'After ADD: confirms no signed overflow. Used for validation in signed arithmetic.',
+                    sub: 'After SUB: confirms no signed overflow. Ensures result is valid.',
+                    mul: 'After MUL: confirms result fits in register. Common for safe multiplication.'
+                },
+                jp: {
+                    and: 'After AND: checks even parity in result. Used in error detection schemes.',
+                    or: 'After OR: checks even parity.',
+                    xor: 'After XOR: checks even parity. Common in checksum validation.',
+                    test: 'After TEST: checks even parity without modifying value.'
+                },
+                jnp: {
+                    and: 'After AND: checks odd parity in result.',
+                    xor: 'After XOR: checks odd parity.',
+                    test: 'After TEST: checks odd parity in value.'
+                }
+            };
+
+            if (usageMap[jumpKey] && usageMap[jumpKey][instKey]) {
+                return usageMap[jumpKey][instKey];
+            }
+
+            return assemblyData.jumps[jumpKey].usage;
+        }
+
+        // Generate instruction-specific jump decision examples
+        function getInstructionSpecificDecisions(jumpKey, instKey) {
+            if (!instKey) return assemblyData.jumps[jumpKey].jumpDecision;
+
+            const inst = assemblyData.instructions[instKey];
+            const jump = assemblyData.jumps[jumpKey];
+
+            // Define instruction-specific examples for each jump type
+            const decisions = {
+                je: {
+                    add: [
+                        { condition: 'ADD EAX, EBX results in 0', jumps: true },
+                        { condition: 'ADD EAX, EBX results in non-zero', jumps: false },
+                        { condition: 'e.g: ADD 5, -5 → result=0 → JUMPS', jumps: true },
+                        { condition: 'e.g: ADD 3, 2 → result=5 → NO JUMP', jumps: false }
+                    ],
+                    sub: [
+                        { condition: 'SUB EAX, EBX results in 0 (equal values)', jumps: true },
+                        { condition: 'SUB EAX, EBX results in non-zero', jumps: false },
+                        { condition: 'e.g: SUB 5, 5 → result=0 → JUMPS', jumps: true },
+                        { condition: 'e.g: SUB 5, 3 → result=2 → NO JUMP', jumps: false }
+                    ],
+                    cmp: [
+                        { condition: 'If operands are equal', jumps: true },
+                        { condition: 'If operands differ', jumps: false },
+                        { condition: 'e.g: CMP 5, 5 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 5, 3 → NO JUMP', jumps: false }
+                    ],
+                    inc: [
+                        { condition: 'INC results in 0 (was -1)', jumps: true },
+                        { condition: 'INC results in non-zero', jumps: false },
+                        { condition: 'e.g: INC -1 → result=0 → JUMPS', jumps: true },
+                        { condition: 'e.g: INC 5 → result=6 → NO JUMP', jumps: false }
+                    ],
+                    dec: [
+                        { condition: 'DEC reaches 0', jumps: true },
+                        { condition: 'DEC results in non-zero', jumps: false },
+                        { condition: 'e.g: DEC 1 → result=0 → JUMPS', jumps: true },
+                        { condition: 'e.g: DEC 5 → result=4 → NO JUMP', jumps: false }
+                    ],
+                    and: [
+                        { condition: 'AND results in 0 (no common bits)', jumps: true },
+                        { condition: 'AND results in non-zero', jumps: false },
+                        { condition: 'e.g: AND 0x0F, 0xF0 → result=0 → JUMPS', jumps: true },
+                        { condition: 'e.g: AND 0xFF, 0x0F → result=0x0F → NO JUMP', jumps: false }
+                    ],
+                    or: [
+                        { condition: 'OR results in 0 (both operands 0)', jumps: true },
+                        { condition: 'OR results in non-zero', jumps: false },
+                        { condition: 'e.g: OR 0, 0 → result=0 → JUMPS', jumps: true },
+                        { condition: 'e.g: OR 1, 2 → result=3 → NO JUMP', jumps: false }
+                    ],
+                    xor: [
+                        { condition: 'XOR results in 0 (operands equal)', jumps: true },
+                        { condition: 'XOR results in non-zero', jumps: false },
+                        { condition: 'e.g: XOR 5, 5 → result=0 → JUMPS', jumps: true },
+                        { condition: 'e.g: XOR 5, 3 → result=6 → NO JUMP', jumps: false }
+                    ],
+                    test: [
+                        { condition: 'TEST shows no common bits set', jumps: true },
+                        { condition: 'TEST shows common bits', jumps: false },
+                        { condition: 'e.g: TEST 0x0F, 0xF0 → no bits → JUMPS', jumps: true },
+                        { condition: 'e.g: TEST 0xFF, 0x0F → bits set → NO JUMP', jumps: false }
+                    ],
+                    default: jump.jumpDecision
+                },
+                jne: {
+                    add: [
+                        { condition: 'ADD results in non-zero', jumps: true },
+                        { condition: 'ADD results in 0', jumps: false },
+                        { condition: 'e.g: ADD 3, 2 → result=5 → JUMPS', jumps: true },
+                        { condition: 'e.g: ADD 5, -5 → result=0 → NO JUMP', jumps: false }
+                    ],
+                    cmp: [
+                        { condition: 'If X ≠ Y', jumps: true },
+                        { condition: 'If X = Y', jumps: false },
+                        { condition: 'e.g: CMP 5, 3 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 5, 5 → NO JUMP', jumps: false }
+                    ],
+                    default: jump.jumpDecision
+                },
+                jg: {
+                    cmp: [
+                        { condition: 'If X > Y (signed)', jumps: true },
+                        { condition: 'If X = Y', jumps: false },
+                        { condition: 'If X < Y (signed)', jumps: false },
+                        { condition: 'e.g: CMP 5, 3 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP -5, -10 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 3, 5 → NO JUMP', jumps: false }
+                    ],
+                    sub: [
+                        { condition: 'If result > 0 (signed)', jumps: true },
+                        { condition: 'If result = 0', jumps: false },
+                        { condition: 'If result < 0 (signed)', jumps: false },
+                        { condition: 'e.g: SUB 5, 3 → result=2 → JUMPS', jumps: true },
+                        { condition: 'e.g: SUB 3, 5 → result=-2 → NO JUMP', jumps: false }
+                    ],
+                    default: jump.jumpDecision
+                },
+                jl: {
+                    cmp: [
+                        { condition: 'If X < Y (signed)', jumps: true },
+                        { condition: 'If X = Y', jumps: false },
+                        { condition: 'If X > Y (signed)', jumps: false },
+                        { condition: 'e.g: CMP 3, 5 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP -10, -5 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 5, 3 → NO JUMP', jumps: false }
+                    ],
+                    sub: [
+                        { condition: 'If result < 0 (signed)', jumps: true },
+                        { condition: 'If result = 0', jumps: false },
+                        { condition: 'If result > 0 (signed)', jumps: false },
+                        { condition: 'e.g: SUB 3, 5 → result=-2 → JUMPS', jumps: true },
+                        { condition: 'e.g: SUB 5, 3 → result=2 → NO JUMP', jumps: false }
+                    ],
+                    default: jump.jumpDecision
+                },
+                jge: {
+                    cmp: [
+                        { condition: 'If X ≥ Y (signed)', jumps: true },
+                        { condition: 'e.g: CMP 5, 3 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 5, 5 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 3, 5 → NO JUMP', jumps: false }
+                    ],
+                    sub: [
+                        { condition: 'If result ≥ 0 (signed)', jumps: true },
+                        { condition: 'e.g: SUB 5, 3 → result=2 → JUMPS', jumps: true },
+                        { condition: 'e.g: SUB 5, 5 → result=0 → JUMPS', jumps: true },
+                        { condition: 'e.g: SUB 3, 5 → result=-2 → NO JUMP', jumps: false }
+                    ],
+                    default: jump.jumpDecision
+                },
+                jle: {
+                    cmp: [
+                        { condition: 'If X ≤ Y (signed)', jumps: true },
+                        { condition: 'e.g: CMP 3, 5 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 5, 5 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 5, 3 → NO JUMP', jumps: false }
+                    ],
+                    sub: [
+                        { condition: 'If result ≤ 0 (signed)', jumps: true },
+                        { condition: 'e.g: SUB 3, 5 → result=-2 → JUMPS', jumps: true },
+                        { condition: 'e.g: SUB 5, 5 → result=0 → JUMPS', jumps: true },
+                        { condition: 'e.g: SUB 5, 3 → result=2 → NO JUMP', jumps: false }
+                    ],
+                    default: jump.jumpDecision
+                },
+                ja: {
+                    cmp: [
+                        { condition: 'If X > Y (unsigned)', jumps: true },
+                        { condition: 'If X = Y', jumps: false },
+                        { condition: 'If X < Y (unsigned)', jumps: false },
+                        { condition: 'e.g: CMP 5, 3 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 0xFF, 0x10 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 3, 5 → NO JUMP', jumps: false }
+                    ],
+                    add: [
+                        { condition: 'After ADD: if no carry AND not zero', jumps: true },
+                        { condition: 'After ADD: if carry occurred', jumps: false },
+                        { condition: 'After ADD: if result = 0', jumps: false }
+                    ],
+                    sub: [
+                        { condition: 'If result > 0 (unsigned, no borrow)', jumps: true },
+                        { condition: 'If result = 0', jumps: false },
+                        { condition: 'If borrow occurred', jumps: false }
+                    ],
+                    default: jump.jumpDecision
+                },
+                jb: {
+                    cmp: [
+                        { condition: 'If X < Y (unsigned)', jumps: true },
+                        { condition: 'If X = Y', jumps: false },
+                        { condition: 'If X > Y (unsigned)', jumps: false },
+                        { condition: 'e.g: CMP 3, 5 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 0x10, 0xFF → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 5, 3 → NO JUMP', jumps: false }
+                    ],
+                    add: [
+                        { condition: 'If carry occurred (unsigned overflow)', jumps: true },
+                        { condition: 'If no carry', jumps: false },
+                        { condition: 'e.g: ADD 0xFF, 0x02 → carry → JUMPS', jumps: true },
+                        { condition: 'e.g: ADD 5, 3 → no carry → NO JUMP', jumps: false }
+                    ],
+                    sub: [
+                        { condition: 'If borrow occurred (X < Y unsigned)', jumps: true },
+                        { condition: 'If no borrow', jumps: false },
+                        { condition: 'e.g: SUB 3, 5 → borrow → JUMPS', jumps: true },
+                        { condition: 'e.g: SUB 5, 3 → no borrow → NO JUMP', jumps: false }
+                    ],
+                    default: jump.jumpDecision
+                },
+                jae: {
+                    add: [
+                        { condition: 'If no carry (result valid)', jumps: true },
+                        { condition: 'If carry occurred', jumps: false },
+                        { condition: 'e.g: ADD 5, 3 → no carry → JUMPS', jumps: true },
+                        { condition: 'e.g: ADD 0xFF, 0x02 → carry → NO JUMP', jumps: false }
+                    ],
+                    sub: [
+                        { condition: 'If no borrow (X ≥ Y unsigned)', jumps: true },
+                        { condition: 'If borrow occurred', jumps: false },
+                        { condition: 'e.g: SUB 5, 3 → JUMPS', jumps: true },
+                        { condition: 'e.g: SUB 3, 5 → NO JUMP', jumps: false }
+                    ],
+                    cmp: [
+                        { condition: 'If X ≥ Y (unsigned)', jumps: true },
+                        { condition: 'e.g: CMP 5, 3 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 5, 5 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 3, 5 → NO JUMP', jumps: false }
+                    ],
+                    default: jump.jumpDecision
+                },
+                jbe: {
+                    add: [
+                        { condition: 'If carry OR result = 0', jumps: true },
+                        { condition: 'If no carry AND result ≠ 0', jumps: false },
+                        { condition: 'e.g: ADD 0xFF, 0x02 → carry → JUMPS', jumps: true },
+                        { condition: 'e.g: ADD 5, 3 → no carry, ≠0 → NO JUMP', jumps: false }
+                    ],
+                    sub: [
+                        { condition: 'If borrow OR result = 0 (X ≤ Y unsigned)', jumps: true },
+                        { condition: 'e.g: SUB 3, 5 → borrow → JUMPS', jumps: true },
+                        { condition: 'e.g: SUB 5, 5 → result=0 → JUMPS', jumps: true },
+                        { condition: 'e.g: SUB 5, 3 → NO JUMP', jumps: false }
+                    ],
+                    cmp: [
+                        { condition: 'If X ≤ Y (unsigned)', jumps: true },
+                        { condition: 'e.g: CMP 3, 5 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 5, 5 → JUMPS', jumps: true },
+                        { condition: 'e.g: CMP 5, 3 → NO JUMP', jumps: false }
+                    ],
+                    default: jump.jumpDecision
+                },
+                js: {
+                    add: [
+                        { condition: 'If result is negative (MSB=1)', jumps: true },
+                        { condition: 'If result is positive or zero', jumps: false },
+                        { condition: 'e.g: ADD -10, -5 → result=-15 → JUMPS', jumps: true },
+                        { condition: 'e.g: ADD 5, 3 → result=8 → NO JUMP', jumps: false }
+                    ],
+                    sub: [
+                        { condition: 'If result is negative', jumps: true },
+                        { condition: 'If result ≥ 0', jumps: false },
+                        { condition: 'e.g: SUB 3, 5 → result=-2 → JUMPS', jumps: true },
+                        { condition: 'e.g: SUB 5, 3 → result=2 → NO JUMP', jumps: false }
+                    ],
+                    test: [
+                        { condition: 'If MSB is set', jumps: true },
+                        { condition: 'If MSB is clear', jumps: false },
+                        { condition: 'e.g: TEST 0x80, 0x80 → MSB set → JUMPS', jumps: true }
+                    ],
+                    default: jump.jumpDecision
+                },
+                jns: {
+                    add: [
+                        { condition: 'If result ≥ 0 (MSB=0)', jumps: true },
+                        { condition: 'If result is negative', jumps: false },
+                        { condition: 'e.g: ADD 5, 3 → result=8 → JUMPS', jumps: true },
+                        { condition: 'e.g: ADD -10, -5 → result=-15 → NO JUMP', jumps: false }
+                    ],
+                    sub: [
+                        { condition: 'If result ≥ 0', jumps: true },
+                        { condition: 'If result is negative', jumps: false },
+                        { condition: 'e.g: SUB 5, 3 → result=2 → JUMPS', jumps: true },
+                        { condition: 'e.g: SUB 3, 5 → result=-2 → NO JUMP', jumps: false }
+                    ],
+                    default: jump.jumpDecision
+                },
+                jo: {
+                    add: [
+                        { condition: 'If signed overflow occurred', jumps: true },
+                        { condition: 'If no signed overflow', jumps: false },
+                        { condition: 'e.g: ADD 127, 1 (8-bit) → overflow → JUMPS', jumps: true },
+                        { condition: 'e.g: ADD 5, 3 → no overflow → NO JUMP', jumps: false }
+                    ],
+                    sub: [
+                        { condition: 'If signed overflow occurred', jumps: true },
+                        { condition: 'If no signed overflow', jumps: false },
+                        { condition: 'e.g: SUB -128, 1 (8-bit) → overflow → JUMPS', jumps: true },
+                        { condition: 'e.g: SUB 5, 3 → no overflow → NO JUMP', jumps: false }
+                    ],
+                    default: jump.jumpDecision
+                },
+                jno: {
+                    add: [
+                        { condition: 'If no signed overflow', jumps: true },
+                        { condition: 'If signed overflow occurred', jumps: false },
+                        { condition: 'e.g: ADD 5, 3 → JUMPS', jumps: true },
+                        { condition: 'e.g: ADD 127, 1 (8-bit) → NO JUMP', jumps: false }
+                    ],
+                    default: jump.jumpDecision
+                }
+            };
+
+            // Return instruction-specific decisions if available
+            if (decisions[jumpKey] && decisions[jumpKey][instKey]) {
+                return decisions[jumpKey][instKey];
+            } else if (decisions[jumpKey] && decisions[jumpKey].default) {
+                return decisions[jumpKey].default;
+            }
+
+            return jump.jumpDecision;
+        }
+
         // Create second info panel for jump when both are selected
         function showJumpInfoSecondPanel(jump) {
             // Remove existing second panel if any
             let panel2 = document.getElementById('info-panel-2');
             if (panel2) panel2.remove();
-            
+
             // Clone the first panel
             const panel1 = document.getElementById('info-panel');
             panel2 = panel1.cloneNode(true);
             panel2.id = 'info-panel-2';
             panel2.style.top = '450px'; // Position below first panel
             document.body.appendChild(panel2);
-            
+
             // Make it draggable
             makeDraggable(panel2);
-            
+
             // Update content for jump
             const title = panel2.querySelector('h3');
             const content = panel2.querySelector('.info-content');
-            
+
             title.textContent = jump.name;
-            
+
+            // Get selected instruction for context
+            const instSelect = document.getElementById('instruction-select');
+            const selectedInst = instSelect.value ? assemblyData.instructions[instSelect.value] : null;
+            const contextText = selectedInst ? `After ${selectedInst.name} instruction` : 'After any flag-setting instruction';
+
+            // Get instruction-specific decision table
+            const jumpKey = document.getElementById('jump-select').value;
+            const jumpDecisions = getInstructionSpecificDecisions(jumpKey, instSelect.value);
+            const jumpUsage = getInstructionSpecificUsage(jumpKey, instSelect.value);
+
             // Generate jump decision table
             let decisionTable = '';
-            if (jump.jumpDecision) {
+            if (jumpDecisions) {
                 decisionTable = `
                 <div style="background: #0f1923; padding: 15px; border-radius: 8px; margin: 10px 0; border: 2px solid #ffd93d;">
                     <p style="color: #ffd93d; font-weight: bold; margin-bottom: 10px;">Jump Decision:</p>
-                    <p style="color: #64ffda; font-size: 12px; margin-bottom: 10px;">After any flag-setting instruction</p>
+                    <p style="color: #64ffda; font-size: 12px; margin-bottom: 10px;">${contextText}</p>
                     <table style="width: 100%; border-collapse: collapse;">
-                        ${jump.jumpDecision.map(row => `
+                        ${jumpDecisions.map(row => `
                         <tr style="border-bottom: 1px solid #2a3f5f;">
                             <td style="padding: 8px; color: #8892b0;">${row.condition}</td>
                             <td style="padding: 8px; text-align: center; font-weight: bold; color: ${row.jumps ? '#64ffda' : '#ff6b6b'};">
@@ -1219,14 +1638,14 @@
                 </div>
                 `;
             }
-            
+
             content.innerHTML = `
                 <p><strong>Description:</strong> ${jump.desc}</p>
                 <p><strong>Condition:</strong> ${jump.condition}</p>
                 <p><strong>Flags checked:</strong> ${jump.flags.join(', ')}</p>
                 ${decisionTable}
                 <p><strong>Data type:</strong> ${jump.dataType}</p>
-                <p><strong>Usage:</strong> ${jump.usage}</p>
+                <p><strong>Usage:</strong> ${jumpUsage}</p>
                 <p><strong>Example:</strong></p>
                 <code style="display: block; background: #1a2332; padding: 8px; border-radius: 4px; margin-top: 5px; white-space: pre-wrap; word-wrap: break-word;">
 ${jump.example}
@@ -1312,16 +1731,26 @@ ${jump.example}
                 `;
             } else             if (type === 'jump') {
                 title.textContent = data.name;
-                
+
+                // Get selected instruction for context
+                const instSelect = document.getElementById('instruction-select');
+                const selectedInst = instSelect.value ? assemblyData.instructions[instSelect.value] : null;
+                const contextText = selectedInst ? `After ${selectedInst.name} instruction` : 'After any flag-setting instruction';
+
+                // Get instruction-specific decision table
+                const jumpKey = document.getElementById('jump-select').value;
+                const jumpDecisions = getInstructionSpecificDecisions(jumpKey, instSelect.value);
+                const jumpUsage = getInstructionSpecificUsage(jumpKey, instSelect.value);
+
                 // Generate jump decision table based on jump type
                 let decisionTable = '';
-                if (data.jumpDecision) {
+                if (jumpDecisions) {
                     decisionTable = `
                     <div style="background: #0f1923; padding: 15px; border-radius: 8px; margin: 10px 0; border: 2px solid #ffd93d;">
                         <p style="color: #ffd93d; font-weight: bold; margin-bottom: 10px;">Jump Decision:</p>
-                        <p style="color: #64ffda; font-size: 12px; margin-bottom: 10px;">After any flag-setting instruction</p>
+                        <p style="color: #64ffda; font-size: 12px; margin-bottom: 10px;">${contextText}</p>
                         <table style="width: 100%; border-collapse: collapse;">
-                            ${data.jumpDecision.map(row => `
+                            ${jumpDecisions.map(row => `
                             <tr style="border-bottom: 1px solid #2a3f5f;">
                                 <td style="padding: 8px; color: #8892b0;">${row.condition}</td>
                                 <td style="padding: 8px; text-align: center; font-weight: bold; color: ${row.jumps ? '#64ffda' : '#ff6b6b'};">
@@ -1333,14 +1762,14 @@ ${jump.example}
                     </div>
                     `;
                 }
-                
+
                 content.innerHTML = `
                     <p><strong>Description:</strong> ${data.desc}</p>
                     <p><strong>Condition:</strong> ${data.condition}</p>
                     <p><strong>Flags checked:</strong> ${data.flags.join(', ')}</p>
                     ${decisionTable}
                     <p><strong>Data type:</strong> ${data.dataType}</p>
-                    <p><strong>Usage:</strong> ${data.usage}</p>
+                    <p><strong>Usage:</strong> ${jumpUsage}</p>
                     <p><strong>Example:</strong></p>
                     <code style="display: block; background: #1a2332; padding: 8px; border-radius: 4px; margin-top: 5px; white-space: pre-wrap; word-wrap: break-word;">
 ${data.example}
