@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harvard CS61 - x86-64 Assembly Analyzer</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #9ca3af;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: rgba(25, 25, 40, 0.95);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .panel-header {
+            font-size: 1.3em;
+            color: #a78bfa;
+            margin-bottom: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .code-editor {
+            width: 100%;
+            min-height: 400px;
+            background: #0d0d1a;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            color: #e0e0e0;
+            resize: vertical;
+            line-height: 1.5;
+        }
+
+        .analyze-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            margin-top: 15px;
+            width: 100%;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .analyze-btn:active {
+            transform: translateY(0);
+        }
+
+        .analysis-section {
+            margin-bottom: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .analysis-section:hover {
+            background: rgba(255, 255, 255, 0.07);
+            border-color: rgba(167, 139, 250, 0.3);
+        }
+
+        .analysis-section h3 {
+            color: #60a5fa;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .analysis-section h4 {
+            color: #fbbf24;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .register {
+            font-family: 'Consolas', 'Monaco', monospace;
+            background: rgba(52, 211, 153, 0.2);
+            color: #34d399;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .instruction {
+            font-family: 'Consolas', 'Monaco', monospace;
+            background: rgba(96, 165, 250, 0.2);
+            color: #60a5fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .immediate {
+            font-family: 'Consolas', 'Monaco', monospace;
+            background: rgba(248, 113, 113, 0.2);
+            color: #f87171;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .label {
+            font-family: 'Consolas', 'Monaco', monospace;
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .info-box {
+            background: rgba(167, 139, 250, 0.1);
+            border-left: 4px solid #a78bfa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+
+        .success-box {
+            background: rgba(52, 211, 153, 0.1);
+            border-left: 4px solid #34d399;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+
+        .warning-box {
+            background: rgba(251, 191, 36, 0.1);
+            border-left: 4px solid #fbbf24;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+
+        .code-snippet {
+            background: #0d0d1a;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+            overflow-x: auto;
+        }
+
+        .examples-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e0e0e0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-right: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .examples-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(167, 139, 250, 0.5);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        @media (max-width: 968px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .loading {
+            display: none;
+            color: #a78bfa;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(167, 139, 250, 0.3);
+            border-radius: 50%;
+            border-top-color: #a78bfa;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-box {
+            background: rgba(248, 113, 113, 0.1);
+            border-left: 4px solid #f87171;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Harvard CS61 - x86-64 Assembly Analyzer</h1>
+        <p class="subtitle">Paste your assembly code to get detailed analysis</p>
+        
+        <div class="main-grid">
+            <!-- Input Panel -->
+            <div class="panel">
+                <h2 class="panel-header">
+                    <span>📝</span>
+                    Assembly Code Input
+                </h2>
+                <div class="button-group">
+                    <button class="examples-btn" onclick="loadExample('simple')">Simple Function</button>
+                    <button class="examples-btn" onclick="loadExample('complex')">Complex Loop</button>
+                    <button class="examples-btn" onclick="loadExample('recursive')">Recursive</button>
+                    <button class="examples-btn" onclick="clearCode()">Clear</button>
+                </div>
+                <textarea id="codeInput" class="code-editor" placeholder="Paste your x86-64 assembly code here...">_Z1f....:
+    xor    %eax,%eax
+    test   %rsi,%rsi
+    je     L2
+L1:
+    dec    %rsi
+    lea    (%rdi,%rsi,4),%rdx
+    xor    %ecx,%ecx
+    mov    (%rdx),%ecx
+    cmp    $0x5,%ecx
+    jae    L1
+    add    %ecx,%eax
+    test   %rsi,%rsi
+    jne    L1
+L2:
+    ret</textarea>
+                <button class="analyze-btn" onclick="analyzeCode()">🔍 Analyze Assembly</button>
+            </div>
+            
+            <!-- Analysis Panel -->
+            <div class="panel">
+                <h2 class="panel-header">
+                    <span>📊</span>
+                    Analysis Results
+                </h2>
+                <div id="loadingIndicator" class="loading">
+                    <div class="spinner"></div>
+                    <p>Analyzing code...</p>
+                </div>
+                <div id="analysisResults">
+                    <div class="info-box">
+                        <p>👈 Paste your assembly code and click "Analyze Assembly" to see detailed analysis</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Analysis Results -->
+        <div id="detailedAnalysis" style="display: none;">
+            <!-- Results will be populated here -->
+        </div>
+    </div>
+
+    <script>
+        // Example code snippets
+        const examples = {
+            simple: `simple_add:
+    mov    %edi,%eax
+    add    %esi,%eax
+    ret`,
+            
+            complex: `array_sum:
+    xor    %eax,%eax
+    test   %rsi,%rsi
+    je     done
+loop_start:
+    dec    %rsi
+    add    (%rdi,%rsi,4),%eax
+    test   %rsi,%rsi
+    jne    loop_start
+done:
+    ret`,
+            
+            recursive: `factorial:
+    cmp    $1,%edi
+    jbe    base_case
+    push   %rdi
+    dec    %edi
+    call   factorial
+    pop    %rdi
+    imul   %edi,%eax
+    ret
+base_case:
+    mov    $1,%eax
+    ret`
+        };
+
+        function loadExample(type) {
+            document.getElementById('codeInput').value = examples[type];
+        }
+
+        function clearCode() {
+            document.getElementById('codeInput').value = '';
+            document.getElementById('analysisResults').innerHTML = `
+                <div class="info-box">
+                    <p>👈 Paste your assembly code and click "Analyze Assembly" to see detailed analysis</p>
+                </div>`;
+            document.getElementById('detailedAnalysis').style.display = 'none';
+        }
+
+        function analyzeCode() {
+            const code = document.getElementById('codeInput').value.trim();
+            if (!code) {
+                showError('Please enter some assembly code to analyze.');
+                return;
+            }
+
+            // Show loading indicator
+            document.getElementById('loadingIndicator').classList.add('active');
+            
+            // Simulate processing delay for realistic feel
+            setTimeout(() => {
+                performAnalysis(code);
+                document.getElementById('loadingIndicator').classList.remove('active');
+            }, 500);
+        }
+
+        function showError(message) {
+            document.getElementById('analysisResults').innerHTML = `
+                <div class="error-box">
+                    <p>❌ ${message}</p>
+                </div>`;
+        }
+
+        function performAnalysis(code) {
+            const lines = code.split('\n').map(line => line.trim()).filter(line => line);
+            const analysis = {
+                registers: analyzeRegisters(lines),
+                parameters: analyzeParameters(lines),
+                returnType: analyzeReturnType(lines),
+                dataTypes: analyzeDataTypes(lines),
+                controlFlow: analyzeControlFlow(lines),
+                patterns: identifyPatterns(lines),
+                optimizations: findOptimizations(lines)
+            };
+
+            displayAnalysis(analysis, lines);
+        }
+
+        function analyzeRegisters(lines) {
+            const usedRegisters = new Set();
+            const registerUsage = {};
+            const argRegisters = ['%rdi', '%edi', '%dil', '%rsi', '%esi', '%sil', 
+                                  '%rdx', '%edx', '%dl', '%rcx', '%ecx', '%cl',
+                                  '%r8', '%r8d', '%r8b', '%r9', '%r9d', '%r9b'];
+            
+            lines.forEach(line => {
+                // Match all register references
+                const registerPattern = /%[er]?[abcd]x|%[er]?[sd]i|%[er]?[sb]p|%r[89]d?b?|%[abcd]l|%[sd]il/g;
+                const matches = line.match(registerPattern) || [];
+                
+                matches.forEach(reg => {
+                    usedRegisters.add(reg);
+                    
+                    // Track first usage
+                    if (!registerUsage[reg]) {
+                        registerUsage[reg] = {
+                            firstUse: line,
+                            isArgument: argRegisters.includes(reg),
+                            uses: []
+                        };
+                    }
+                    registerUsage[reg].uses.push(line);
+                });
+            });
+
+            return { usedRegisters: Array.from(usedRegisters), registerUsage };
+        }
+
+        function analyzeParameters(lines) {
+            const paramRegisters = [
+                { reg: ['%rdi', '%edi', '%dil'], param: 1 },
+                { reg: ['%rsi', '%esi', '%sil'], param: 2 },
+                { reg: ['%rdx', '%edx', '%dl'], param: 3 },
+                { reg: ['%rcx', '%ecx', '%cl'], param: 4 },
+                { reg: ['%r8', '%r8d', '%r8b'], param: 5 },
+                { reg: ['%r9', '%r9d', '%r9b'], param: 6 }
+            ];
+
+            const usedParams = [];
+            const paramDetails = {};
+            
+            // For each parameter register group
+            paramRegisters.forEach(({ reg, param }) => {
+                let isParam = false;
+                let usedReg = null;
+                
+                // Check each size variant
+                for (const r of reg) {
+                    // Find first occurrence of this register
+                    for (let i = 0; i < lines.length; i++) {
+                        const line = lines[i];
+                        if (line.endsWith(':') || !line.trim()) continue;
+                        
+                        if (line.includes(r)) {
+                            // Check if it's being read (not written to)
+                            const isRead = 
+                                // test/cmp always read
+                                line.match(/^\s*(test|cmp)\s+/) ||
+                                // Source in mov/add/sub/etc (before comma)
+                                (line.includes(r + ',') && !line.includes(',' + r)) ||
+                                // Inside parentheses (memory addressing)
+                                line.includes('(' + r) || line.includes(',' + r + ')') || line.includes(',' + r + ',') ||
+                                // Single operand instructions that read
+                                (line.match(/^\s*(push|inc|dec|neg|not)\s+/) && line.includes(r));
+                            
+                            const isWrite = 
+                                // Destination of mov/lea/add etc (after comma)
+                                line.includes(',' + r) && !line.includes(r + ',') ||
+                                // xor %reg,%reg pattern (zeroing)
+                                line.match(new RegExp(`xor\\s+${r}\\s*,\\s*${r}`)) ||
+                                // pop writes to register
+                                (line.match(/^\s*pop\s+/) && line.includes(r));
+                            
+                            if (isRead && !isWrite) {
+                                isParam = true;
+                                usedReg = r;
+                                break;
+                            }
+                            
+                            // If written before read, not a parameter
+                            if (isWrite && !isRead) {
+                                break;
+                            }
+                        }
+                    }
+                    if (isParam) break;
+                }
+                
+                if (isParam && usedReg) {
+                    usedParams.push(param);
+                    
+                    let type = inferTypeFromRegister(usedReg);
+                    
+                    // Enhance type based on usage
+                    if (lines.some(line => line.includes('lea') && line.includes('(' + usedReg))) {
+                        type = 'pointer (array base)';
+                    } else if (param === 2 && lines.some(line => line.includes('test') && line.includes(usedReg))) {
+                        type = 'size_t (array size/index)';
+                    }
+                    
+                    paramDetails[param] = {
+                        register: usedReg,
+                        possibleType: type,
+                        usage: lines.filter(line => line.includes(usedReg)).slice(0, 3)
+                    };
+                }
+            });
+
+            return {
+                count: usedParams.length,
+                parameters: paramDetails
+            };
+        }
+
+        function analyzeReturnType(lines) {
+            const returnReg = ['%rax', '%eax', '%ax', '%al'];
+            let returnType = 'void';
+            let returnRegister = null;
+
+            // Look for modifications to return register before ret
+            for (let i = lines.length - 1; i >= 0; i--) {
+                if (lines[i].includes('ret')) {
+                    // Check previous lines for return register usage
+                    for (let j = i - 1; j >= 0; j--) {
+                        for (const reg of returnReg) {
+                            if (lines[j].includes(reg) && !lines[j].includes(reg + ',')) {
+                                returnRegister = reg;
+                                returnType = inferTypeFromRegister(reg);
+                                break;
+                            }
+                        }
+                        if (returnRegister) break;
+                    }
+                    break;
+                }
+            }
+
+            return { type: returnType, register: returnRegister };
+        }
+
+        function analyzeDataTypes(lines) {
+            const types = {};
+            
+            lines.forEach(line => {
+                // LEA patterns for arrays
+                const leaPattern = /lea\s+\((%[er]?[sd]i),(%[er]?[sd]i),(\d+)\)/;
+                const leaMatch = line.match(leaPattern);
+                if (leaMatch) {
+                    const scale = parseInt(leaMatch[3]);
+                    const elementType = scale === 1 ? 'char' : 
+                                       scale === 2 ? 'short' : 
+                                       scale === 4 ? 'int' : 
+                                       scale === 8 ? 'long/pointer' : 'unknown';
+                    types[leaMatch[1]] = `pointer to ${elementType} array`;
+                }
+
+                // Dereference patterns
+                const derefPattern = /mov[bwlq]?\s+\((%[er]?[abcdsi]+[ix]?)\)/;
+                const derefMatch = line.match(derefPattern);
+                if (derefMatch) {
+                    types[derefMatch[1]] = 'pointer';
+                }
+            });
+
+            return types;
+        }
+
+        function analyzeControlFlow(lines) {
+            const flow = {
+                labels: [],
+                jumps: [],
+                loops: [],
+                conditions: []
+            };
+
+            lines.forEach((line, index) => {
+                // Labels
+                if (line.endsWith(':')) {
+                    flow.labels.push({ name: line.slice(0, -1), line: index });
+                }
+
+                // Jumps
+                const jumpPattern = /j[a-z]+\s+(\w+)/;
+                const jumpMatch = line.match(jumpPattern);
+                if (jumpMatch) {
+                    flow.jumps.push({
+                        type: line.split(/\s+/)[0],
+                        target: jumpMatch[1],
+                        line: index
+                    });
+                }
+
+                // Test/compare instructions
+                if (line.includes('test') || line.includes('cmp')) {
+                    flow.conditions.push({ instruction: line, line: index });
+                }
+            });
+
+            // Identify loops
+            flow.jumps.forEach(jump => {
+                const targetLabel = flow.labels.find(l => l.name === jump.target);
+                if (targetLabel && targetLabel.line < jump.line) {
+                    flow.loops.push({
+                        start: targetLabel.line,
+                        end: jump.line,
+                        type: 'backward jump'
+                    });
+                }
+            });
+
+            return flow;
+        }
+
+        function identifyPatterns(lines) {
+            const patterns = [];
+
+            // Pattern: Zero initialization
+            if (lines.some(line => line.includes('xor') && line.includes('%eax,%eax'))) {
+                patterns.push({
+                    type: 'Zero Initialization',
+                    description: 'Using XOR to zero a register (common optimization)',
+                    example: 'xor %eax,%eax'
+                });
+            }
+
+            // Pattern: Array traversal
+            const hasLea = lines.some(line => line.includes('lea'));
+            const hasDec = lines.some(line => line.includes('dec'));
+            const hasLoop = lines.some(line => line.includes('jne') || line.includes('jae'));
+            
+            if (hasLea && hasDec && hasLoop) {
+                patterns.push({
+                    type: 'Array Traversal',
+                    description: 'Backward array traversal pattern detected',
+                    example: 'Uses LEA for address calculation with decrementing index'
+                });
+            }
+
+            // Pattern: Conditional accumulation
+            if (lines.some(line => line.includes('cmp')) && 
+                lines.some(line => line.includes('add'))) {
+                patterns.push({
+                    type: 'Conditional Accumulation',
+                    description: 'Accumulating values based on a condition',
+                    example: 'Compare and add pattern'
+                });
+            }
+
+            return patterns;
+        }
+
+        function findOptimizations(lines) {
+            const optimizations = [];
+
+            lines.forEach((line, index) => {
+                // Redundant operations
+                if (line.includes('xor %ecx,%ecx') && 
+                    index + 1 < lines.length && 
+                    lines[index + 1].includes('mov') && 
+                    lines[index + 1].includes('%ecx')) {
+                    optimizations.push({
+                        line: index,
+                        type: 'Redundant Operation',
+                        description: `Line ${index + 1}: XOR before immediate MOV is redundant`,
+                        suggestion: 'Remove the XOR instruction'
+                    });
+                }
+            });
+
+            return optimizations;
+        }
+
+        function inferTypeFromRegister(reg) {
+            if (!reg) return 'unknown';
+            
+            if (reg.endsWith('b') || reg.includes('l')) return 'char/unsigned char';
+            if (reg.endsWith('w')) return 'short/unsigned short';
+            if (reg.startsWith('%e')) return 'int/unsigned int';
+            if (reg.startsWith('%r')) return 'long/size_t/pointer';
+            
+            return 'unknown';
+        }
+
+        function displayAnalysis(analysis, lines) {
+            const resultsDiv = document.getElementById('analysisResults');
+            const detailedDiv = document.getElementById('detailedAnalysis');
+            
+            // Summary in right panel
+            resultsDiv.innerHTML = `
+                <div class="analysis-section">
+                    <h3>📋 Function Signature</h3>
+                    <div class="success-box">
+                        <p><strong>Parameters:</strong> ${analysis.parameters.count} parameter(s)</p>
+                        <p><strong>Return Type:</strong> ${analysis.returnType.type} ${analysis.returnType.register ? `(via <span class="register">${analysis.returnType.register}</span>)` : ''}</p>
+                    </div>
+                    ${generateParameterDetails(analysis.parameters)}
+                </div>
+
+                <div class="analysis-section">
+                    <h3>🔄 Control Flow</h3>
+                    <p><strong>Labels:</strong> ${analysis.controlFlow.labels.length}</p>
+                    <p><strong>Jumps:</strong> ${analysis.controlFlow.jumps.length}</p>
+                    <p><strong>Loops:</strong> ${analysis.controlFlow.loops.length}</p>
+                    ${analysis.controlFlow.loops.length > 0 ? '<div class="info-box">Loop pattern detected (backward jump)</div>' : ''}
+                </div>
+
+                <div class="analysis-section">
+                    <h3>🎯 Patterns Detected</h3>
+                    ${analysis.patterns.map(p => `
+                        <div class="success-box">
+                            <h4>${p.type}</h4>
+                            <p>${p.description}</p>
+                            <code>${p.example}</code>
+                        </div>
+                    `).join('')}
+                </div>
+
+                ${analysis.optimizations.length > 0 ? `
+                <div class="analysis-section">
+                    <h3>💡 Optimization Opportunities</h3>
+                    ${analysis.optimizations.map(o => `
+                        <div class="warning-box">
+                            <h4>${o.type}</h4>
+                            <p>${o.description}</p>
+                            <p><strong>Suggestion:</strong> ${o.suggestion}</p>
+                        </div>
+                    `).join('')}
+                </div>` : ''}
+            `;
+
+            // Detailed analysis below
+            detailedDiv.style.display = 'block';
+            detailedDiv.innerHTML = `
+                <div class="panel" style="margin-top: 20px;">
+                    <h2 class="panel-header">
+                        <span>🔍</span>
+                        Detailed Analysis
+                    </h2>
+                    
+                    <div class="analysis-section">
+                        <h3>📊 Register Usage Analysis</h3>
+                        <div class="code-snippet">
+                            ${Object.entries(analysis.registers.registerUsage)
+                                .filter(([reg, info]) => info.isArgument)
+                                .map(([reg, info]) => `
+                                    <div style="margin-bottom: 10px;">
+                                        <strong class="register">${reg}</strong>
+                                        ${info.isArgument ? '<span style="color: #fbbf24;">(argument register)</span>' : ''}
+                                        <br>First use: <code>${info.firstUse}</code>
+                                    </div>
+                                `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="analysis-section">
+                        <h3>🧮 Likely C++ Reconstruction</h3>
+                        <div class="code-snippet">
+                            <pre>${generateCppReconstruction(analysis, lines)}</pre>
+                        </div>
+                    </div>
+
+                    <div class="analysis-section">
+                        <h3>📈 Instruction Flow Diagram</h3>
+                        <div class="flow-diagram" style="background: #1e1e2e; border-radius: 8px; padding: 15px; margin: 10px 0; text-align: center; font-family: monospace;">
+                            ${generateFlowDiagram(analysis.controlFlow, lines)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateParameterDetails(params) {
+            if (params.count === 0) return '<p>No parameters detected</p>';
+            
+            return Object.entries(params.parameters).map(([num, details]) => `
+                <div class="info-box" style="margin-top: 10px;">
+                    <h4>Parameter ${num}</h4>
+                    <p><strong>Register:</strong> <span class="register">${details.register}</span></p>
+                    <p><strong>Likely Type:</strong> ${details.possibleType}</p>
+                </div>
+            `).join('');
+        }
+
+        function generateCppReconstruction(analysis, lines) {
+            // This is a simplified reconstruction based on the patterns
+            let paramList = [];
+            for (let i = 1; i <= 6; i++) {
+                const param = analysis.parameters.parameters[i];
+                if (param) {
+                    if (param.possibleType.includes('pointer')) {
+                        paramList.push(`unsigned* param${i}`);
+                    } else if (param.possibleType.includes('size_t')) {
+                        paramList.push(`size_t param${i}`);
+                    } else {
+                        paramList.push(`${param.possibleType} param${i}`);
+                    }
+                }
+            }
+
+            const returnType = analysis.returnType.type === 'void' ? 'void' : 
+                              analysis.returnType.type.includes('unsigned') ? 'unsigned' : 
+                              analysis.returnType.type;
+
+            let body = '    // Function body\n';
+            if (analysis.patterns.some(p => p.type === 'Zero Initialization')) {
+                body += '    ' + returnType + ' result = 0;\n';
+            }
+            if (analysis.controlFlow.loops.length > 0) {
+                body += '    // Loop detected\n';
+                body += '    while (condition) {\n';
+                body += '        // Loop body\n';
+                body += '    }\n';
+            }
+            if (analysis.returnType.type !== 'void') {
+                body += '    return result;\n';
+            }
+
+            return `${returnType} function(${paramList.join(', ')}) {\n${body}}`;
+        }
+
+        function generateFlowDiagram(controlFlow, lines) {
+            if (controlFlow.labels.length === 0) {
+                return '<p>Linear execution (no jumps or labels)</p>';
+            }
+
+            let diagram = '<pre style="text-align: left;">';
+            diagram += 'Entry\n  |\n  v\n';
+            
+            controlFlow.labels.forEach((label, index) => {
+                diagram += `[${label.name}]\n`;
+                if (controlFlow.loops.some(l => l.start === label.line)) {
+                    diagram += '  ↑ (loop start)\n';
+                }
+                if (index < controlFlow.labels.length - 1) {
+                    diagram += '  |\n  v\n';
+                }
+            });
+            
+            diagram += '  |\n  v\nReturn</pre>';
+            
+            return diagram;
+        }
+    </script>
+</body>
+</html>
