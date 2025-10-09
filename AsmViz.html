@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>x86-64 Assembly Analyzer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: #0f1419;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #e94560 0%, #533483 100%);
+            padding: 30px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            margin-top: 10px;
+            color: rgba(255,255,255,0.9);
+            font-size: 14px;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 27% 73%;
+            gap: 0;
+            min-height: 600px;
+        }
+
+        .left-panel {
+            background: #1a1f2e;
+            border-right: 2px solid #2a3040;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .right-panel {
+            background: #151a23;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            max-height: 1100px;
+        }
+
+        .panel-header {
+            background: #2a3040;
+            padding: 15px 20px;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #e94560;
+            border-bottom: 2px solid #e94560;
+        }
+
+        .editor-area {
+            flex: 1;
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .code-editor-wrapper {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .line-numbers {
+            background: #1a1f2e;
+            color: #5a6070;
+            padding: 20px 10px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            text-align: right;
+            user-select: none;
+            overflow-y: hidden;
+            border-right: 1px solid #2a3040;
+            min-width: 50px;
+            white-space: pre;
+        }
+
+        #assemblyInput {
+            width: 100%;
+            flex: 1;
+            min-height: 200px;
+            background: #0f1419;
+            color: #e6e6e6;
+            border: none;
+            padding: 20px 20px 20px 10px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            overflow-y: auto;
+        }
+
+        #assemblyInput::placeholder {
+            color: #5a6070;
+        }
+
+        .toolbar {
+            background: #2a3040;
+            padding: 15px 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            border-top: 1px solid #3a4050;
+            flex-shrink: 0;
+        }
+
+        button {
+            background: #e94560;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        button:hover {
+            background: #f15577;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4);
+        }
+
+        button.secondary {
+            background: #533483;
+        }
+
+        button.secondary:hover {
+            background: #6845a1;
+        }
+
+        .analysis-section {
+            padding: 20px;
+            border-bottom: 1px solid #2a3040;
+        }
+
+        .analysis-section:last-child {
+            border-bottom: none;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #e94560;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .info-card {
+            background: #1a1f2e;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 3px solid #e94560;
+        }
+
+        .info-label {
+            font-size: 11px;
+            color: #8899aa;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #e94560;
+        }
+
+        .instruction-list {
+            background: #0f1419;
+            border-radius: 6px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .instruction-item {
+            padding: 10px;
+            margin-bottom: 8px;
+            background: #1a1f2e;
+            border-radius: 4px;
+            border-left: 3px solid #533483;
+        }
+
+        .instruction-name {
+            font-weight: 700;
+            color: #f15577;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .instruction-desc {
+            font-size: 12px;
+            color: #aabbcc;
+            line-height: 1.5;
+        }
+
+        .register-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+        }
+
+        .register-item {
+            background: #1a1f2e;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            border: 2px solid #2a3040;
+        }
+
+        .register-item.used {
+            border-color: #e94560;
+            background: #2a1f2e;
+        }
+
+        .register-name {
+            font-weight: 700;
+            color: #e94560;
+            margin-bottom: 5px;
+        }
+
+        .register-type {
+            font-size: 10px;
+            color: #8899aa;
+            text-transform: uppercase;
+        }
+
+        .code-block {
+            background: #0f1419;
+            padding: 15px;
+            border-radius: 6px;
+            font-size: 13px;
+            line-height: 1.6;
+            overflow-x: auto;
+            white-space: pre;
+            border: 1px solid #2a3040;
+        }
+
+        .highlight {
+            color: #f15577;
+            font-weight: 700;
+        }
+
+        .comment {
+            color: #6a7a8a;
+        }
+
+        .label {
+            color: #6dd6da;
+        }
+
+        .directive {
+            color: #ffb454;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #2a3040;
+        }
+
+        th {
+            background: #2a3040;
+            color: #e94560;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 11px;
+        }
+
+        td {
+            font-size: 13px;
+            color: #ddd;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .badge.data {
+            background: #533483;
+            color: white;
+        }
+
+        .badge.control {
+            background: #e94560;
+            color: white;
+        }
+
+        .badge.arithmetic {
+            background: #3ab795;
+            color: white;
+        }
+
+        .badge.memory {
+            background: #ff9f1c;
+            color: white;
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0f1419;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #533483;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6845a1;
+        }
+
+        .warning {
+            background: #ff9f1c;
+            color: #000;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+
+        .stack-viz {
+            background: #1a1f2e;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+
+        .stack-item {
+            padding: 8px;
+            margin: 4px 0;
+            background: #0f1419;
+            border-left: 3px solid #e94560;
+            font-size: 12px;
+        }
+
+        footer {
+            background: linear-gradient(135deg, #2a3040 0%, #1a1f2e 100%);
+            padding: 20px 30px;
+            text-align: center;
+            border-top: 2px solid #e94560;
+            color: rgba(255,255,255,0.8);
+            font-size: 13px;
+        }
+
+        footer .developer-info {
+            margin-top: 8px;
+            font-size: 12px;
+            color: rgba(255,255,255,0.6);
+        }
+
+        footer a {
+            color: #e94560;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        footer a:hover {
+            color: #ff5577;
+            text-decoration: underline;
+        }
+
+        /* Navigation Panel */
+        .nav-panel {
+            position: fixed;
+            right: 20px;
+            top: 120px;
+            width: 250px;
+            background: #1a1f2e;
+            border-radius: 8px;
+            border: 2px solid #2a3040;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            max-height: calc(100vh - 160px);
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            transition: all 0.3s ease;
+        }
+
+        .nav-panel.visible {
+            display: block;
+            animation: slideInRight 0.3s ease;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .nav-panel-header {
+            background: linear-gradient(135deg, #e94560 0%, #533483 100%);
+            padding: 12px 15px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: white;
+            border-radius: 6px 6px 0 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-panel-content {
+            padding: 10px;
+        }
+
+        .nav-item {
+            padding: 10px 12px;
+            margin: 4px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+            font-size: 12px;
+            color: #aabbcc;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-item:hover {
+            background: rgba(233,69,96,0.1);
+            border-left-color: #e94560;
+            color: #fff;
+            transform: translateX(2px);
+        }
+
+        .nav-item.active {
+            background: rgba(233,69,96,0.15);
+            border-left-color: #e94560;
+            color: #fff;
+        }
+
+        .nav-item-icon {
+            font-size: 14px;
+            min-width: 18px;
+        }
+
+        .nav-item-text {
+            flex: 1;
+            font-weight: 600;
+        }
+
+        /* Adjust container margin when nav is visible */
+        body.nav-active {
+            padding-right: 290px;
+        }
+
+        @media (max-width: 1800px) {
+            .nav-panel {
+                width: 200px;
+                font-size: 11px;
+            }
+            body.nav-active {
+                padding-right: 240px;
+            }
+        }
+
+        @media (max-width: 1400px) {
+            .nav-panel {
+                display: none !important;
+            }
+            body.nav-active {
+                padding-right: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header style="position: relative; display: flex; align-items: center; justify-content: center;">
+            <!-- Logo on Left -->
+            <div style="position: absolute; left: 30px; top: 50%; transform: translateY(-50%);">
+                <img src="asm_icon_2.png" alt="AsmViz Logo" style="height: 80px; filter: brightness(0) invert(1);">
+            </div>
+
+            <!-- Centered Title -->
+            <div style="text-align: center;">
+                <h1>AsmViz - Assembly Visualizer</h1>
+                <div class="subtitle">See Assembly. Understand Assembly.</div>
+                <div class="subtitle" style="margin-top: 5px; font-size: 12px; opacity: 0.85;">Harvard CS61 Fall 2025 • Unofficial Tool</div>
+            </div>
+
+            <!-- Educational Disclaimer - Compact Right Side -->
+            <div style="position: absolute; right: 30px; top: 50%; transform: translateY(-50%); background: rgba(255,193,7,0.15); border: 2px solid #FFC107; border-radius: 8px; padding: 12px 16px; max-width: 280px;">
+                <div style="text-align: center; margin-bottom: 8px;">
+                    <i class="fas fa-exclamation-triangle" style="color: #FFC107; font-size: 20px;"></i>
+                </div>
+                <div style="color: #FFC107; font-weight: bold; font-size: 11px; margin-bottom: 6px; text-align: center;">Educational Tool</div>
+                <div style="color: rgba(255,255,255,0.85); font-size: 10px; line-height: 1.3; text-align: center;">
+                    Learning aid using heuristics. Verify critical findings. Use as supplement, not replacement.
+                </div>
+            </div>
+        </header>
+
+        <div class="main-layout">
+            <!-- Left Panel: Input -->
+            <div class="left-panel">
+                <div class="panel-header">Assembly Code Input</div>
+                <div class="editor-area">
+                    <div class="code-editor-wrapper">
+                        <div class="line-numbers" id="lineNumbers">1</div>
+                        <textarea id="assemblyInput" placeholder="Paste your assembly code here...
+
+Quick example:
+pushq %rbp
+movq %rsp, %rbp
+movl %edi, -4(%rbp)
+movl -4(%rbp), %eax
+addl $10, %eax
+popq %rbp
+ret
+
+Try arrays:
+lea (%rdi,%rsi,4), %rdx
+mov (%rdx), %ecx"></textarea>
+                    </div>
+                </div>
+                <div class="toolbar">
+                    <button onclick="analyzeAssembly()">
+                        <i class="fas fa-play"></i> Analyze Code
+                    </button>
+                    <button class="secondary" onclick="clearInput()">
+                        <i class="fas fa-times"></i> Clear Input
+                    </button>
+                    <select id="exampleSelector" onchange="loadSelectedExample()" style="padding: 12px; background: #533483; color: white; border: none; border-radius: 6px; font-family: inherit; font-size: 13px; cursor: pointer;">
+                        <option value=""><i class="fas fa-file-code"></i> Load Example...</option>
+                        <option value="stack">Stack Frame</option>
+                        <option value="arithmetic">Arithmetic Operations</option>
+                        <option value="array">Array Access</option>
+                        <option value="loop">Loop Example</option>
+                        <option value="xor">XOR Zero Idiom</option>
+                    </select>
+                    <button class="secondary" onclick="copyResults()">
+                        <i class="fas fa-copy"></i> Copy Results
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Panel: Analysis -->
+            <div class="right-panel" id="analysisPanel">
+                <div class="panel-header">Analysis Results</div>
+                <div style="padding: 40px; text-align: center; color: #5a6070;">
+                    Enter assembly code and click "Analyze Code" to see detailed analysis
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <div>
+                Built by <strong>Abdalla Elzedy</strong> • Making the complex simple, one instruction at a time
+            </div>
+            <div class="developer-info" style="margin-top: 8px; font-style: italic;">
+                AT&T Syntax • x86-64 Architecture
+            </div>
+        </footer>
+    </div>
+
+    <!-- Navigation Panel -->
+    <div class="nav-panel" id="navPanel">
+        <div class="nav-panel-header">
+            <i class="fas fa-compass"></i>
+            <span>Analysis Navigator</span>
+        </div>
+        <div class="nav-panel-content" id="navPanelContent">
+            <!-- Navigation items will be populated dynamically -->
+        </div>
+    </div>
+
+    <script src="analyzer.js"></script>
+    <script>
+        // Line numbering functionality
+        const textarea = document.getElementById('assemblyInput');
+        const lineNumbers = document.getElementById('lineNumbers');
+
+        function updateLineNumbers() {
+            const lines = textarea.value.split('\n');
+            const lineCount = lines.length;
+
+            let numbers = '';
+            for (let i = 1; i <= lineCount; i++) {
+                numbers += i + '\n';
+            }
+            lineNumbers.textContent = numbers;
+        }
+
+        function syncScroll() {
+            lineNumbers.scrollTop = textarea.scrollTop;
+        }
+
+        // Update line numbers on input
+        textarea.addEventListener('input', updateLineNumbers);
+        textarea.addEventListener('scroll', syncScroll);
+
+        // Initial line number update
+        updateLineNumbers();
+    </script>
+</body>
+</html>
