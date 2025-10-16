@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WeensyOS Complete Architecture - Interactive Diagram</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', sans-serif;
+            background: #0a0e27;
+            min-height: 100vh;
+            padding: 2rem;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Animated background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(236, 72, 153, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+            animation: pulse 15s ease-in-out infinite;
+            z-index: 0;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            animation: fadeInDown 0.8s ease;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 40px rgba(102, 126, 234, 0.3);
+        }
+
+        .header p {
+            font-size: 1.3rem;
+            color: #94a3b8;
+            font-weight: 300;
+            margin-bottom: 1rem;
+        }
+
+        .keyboard-hints {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .hint-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #cbd5e1;
+        }
+
+        .hint-key {
+            padding: 0.25rem 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            font-family: monospace;
+            font-weight: 600;
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            padding: 0.9rem 2rem;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .control-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .control-btn:hover::before {
+            left: 100%;
+        }
+
+        .zoom-in {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .zoom-out {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .zoom-reset {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .diagram-wrapper {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border-radius: 24px;
+            padding: 2rem;
+            box-shadow:
+                0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(255, 255, 255, 0.05);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .diagram-wrapper::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 200px;
+            background: linear-gradient(180deg, rgba(102, 126, 234, 0.1) 0%, transparent 100%);
+            pointer-events: none;
+        }
+
+        #diagram-canvas {
+            width: 100%;
+            height: 1950px;
+            position: relative;
+            cursor: grab;
+            overflow: hidden;
+        }
+
+        #diagram-canvas:active {
+            cursor: grabbing;
+        }
+
+        /* File Cards */
+        .file-card {
+            position: absolute;
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%);
+            border-radius: 16px;
+            padding: 1.2rem;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid transparent;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            width: 200px;
+        }
+
+        .file-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 16px;
+            padding: 2px;
+            background: linear-gradient(135deg, var(--card-color-1), var(--card-color-2));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .file-card:hover::before {
+            opacity: 1;
+        }
+
+        .file-card:hover {
+            transform: translateY(-8px) scale(1.05);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .file-card.boot {
+            --card-color-1: #3b82f6;
+            --card-color-2: #8b5cf6;
+        }
+
+        .file-card.kernel {
+            --card-color-1: #ec4899;
+            --card-color-2: #f97316;
+        }
+
+        .file-card.hardware {
+            --card-color-1: #8b5cf6;
+            --card-color-2: #6366f1;
+        }
+
+        .file-card.user {
+            --card-color-1: #06b6d4;
+            --card-color-2: #3b82f6;
+        }
+
+        .file-card.lib {
+            --card-color-1: #10b981;
+            --card-color-2: #14b8a6;
+        }
+
+        .file-icon {
+            font-size: 2rem;
+            margin-bottom: 0.8rem;
+            display: block;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+        }
+
+        .file-name {
+            font-size: 1rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 0.4rem;
+            font-family: 'Courier New', monospace;
+        }
+
+        .file-desc {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            line-height: 1.4;
+        }
+
+        .file-type-badge {
+            display: inline-block;
+            padding: 0.25rem 0.6rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            font-size: 0.7rem;
+            color: #cbd5e1;
+            margin-top: 0.5rem;
+            font-weight: 600;
+        }
+
+        /* Connection lines - using canvas */
+        #connections-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            opacity: 0.25;
+        }
+
+        /* Layer frames */
+        .layer-frame {
+            position: absolute;
+            border-radius: 20px;
+            border: 2px solid;
+            backdrop-filter: blur(5px);
+            pointer-events: none;
+        }
+
+        .layer-frame.boot {
+            left: 180px;
+            top: 30px;
+            width: 1100px;
+            height: 250px;
+            border-color: rgba(59, 130, 246, 0.4);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(139, 92, 246, 0.08));
+        }
+
+        .layer-frame.kernel {
+            left: 80px;
+            top: 330px;
+            width: 1280px;
+            height: 450px;
+            border-color: rgba(236, 72, 153, 0.4);
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.08), rgba(249, 115, 22, 0.08));
+        }
+
+        .layer-frame.hardware {
+            left: 360px;
+            top: 880px;
+            width: 660px;
+            height: 250px;
+            border-color: rgba(139, 92, 246, 0.4);
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(99, 102, 241, 0.08));
+        }
+
+        .layer-frame.user {
+            left: 80px;
+            top: 1200px;
+            width: 1500px;
+            height: 250px;
+            border-color: rgba(6, 182, 212, 0.4);
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.08), rgba(59, 130, 246, 0.08));
+        }
+
+        .layer-frame.lib {
+            left: 220px;
+            top: 1500px;
+            width: 960px;
+            height: 250px;
+            border-color: rgba(16, 185, 129, 0.4);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(20, 184, 166, 0.08));
+        }
+
+        /* Layer indicators */
+        .layer-indicator {
+            position: absolute;
+            padding: 0.7rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: white;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border: 2px solid;
+            z-index: 10;
+        }
+
+        .layer-boot {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.5), rgba(139, 92, 246, 0.5));
+            border-color: rgba(59, 130, 246, 0.7);
+            left: 200px;
+            top: 20px;
+        }
+
+        .layer-kernel {
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.5), rgba(249, 115, 22, 0.5));
+            border-color: rgba(236, 72, 153, 0.7);
+            left: 100px;
+            top: 320px;
+        }
+
+        .layer-hardware {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.5), rgba(99, 102, 241, 0.5));
+            border-color: rgba(139, 92, 246, 0.7);
+            left: 380px;
+            top: 870px;
+        }
+
+        .layer-user {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.5), rgba(59, 130, 246, 0.5));
+            border-color: rgba(6, 182, 212, 0.7);
+            left: 100px;
+            top: 1190px;
+        }
+
+        .layer-lib {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.5), rgba(20, 184, 166, 0.5));
+            border-color: rgba(16, 185, 129, 0.7);
+            left: 240px;
+            top: 1490px;
+        }
+
+        /* Info Panel */
+        .info-panel {
+            position: fixed;
+            right: -450px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 420px;
+            max-height: 85vh;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border-radius: 24px;
+            padding: 2rem;
+            box-shadow:
+                -10px 0 60px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(255, 255, 255, 0.1);
+            transition: right 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            overflow-y: auto;
+            backdrop-filter: blur(20px);
+        }
+
+        .info-panel.active {
+            right: 2rem;
+        }
+
+        .info-close {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: rgba(239, 68, 68, 0.2);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 1.3rem;
+            cursor: pointer;
+            color: #f87171;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .info-close:hover {
+            background: rgba(239, 68, 68, 0.4);
+            transform: rotate(90deg);
+        }
+
+        .info-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .info-title {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: white;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+        }
+
+        .info-icon {
+            font-size: 2.5rem;
+        }
+
+        .info-badges {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .info-badge {
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge-boot { background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; }
+        .badge-kernel { background: linear-gradient(135deg, #ec4899, #f97316); color: white; }
+        .badge-hardware { background: linear-gradient(135deg, #8b5cf6, #6366f1); color: white; }
+        .badge-user { background: linear-gradient(135deg, #06b6d4, #3b82f6); color: white; }
+        .badge-lib { background: linear-gradient(135deg, #10b981, #14b8a6); color: white; }
+
+        .info-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .info-section h3 {
+            color: #e2e8f0;
+            font-size: 1.1rem;
+            margin-bottom: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-weight: 700;
+        }
+
+        .info-section p {
+            color: #94a3b8;
+            line-height: 1.8;
+            font-size: 0.95rem;
+        }
+
+        .info-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .info-list li {
+            color: #cbd5e1;
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+            line-height: 1.6;
+        }
+
+        .info-list li::before {
+            content: '▹';
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        /* Legend */
+        .legend {
+            margin-top: 3rem;
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.6), rgba(15, 23, 42, 0.6));
+            border-radius: 20px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .legend h3 {
+            color: white;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+        }
+
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            transition: all 0.3s;
+        }
+
+        .legend-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(5px);
+        }
+
+        .legend-color {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            flex-shrink: 0;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .legend-label {
+            color: #e2e8f0;
+            font-weight: 600;
+        }
+
+        .legend-count {
+            color: #64748b;
+            font-size: 0.85rem;
+            margin-top: 0.2rem;
+        }
+
+        /* Scrollbar */
+        .info-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .info-panel::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .info-panel::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.5);
+            border-radius: 10px;
+        }
+
+        .info-panel::-webkit-scrollbar-thumb:hover {
+            background: rgba(102, 126, 234, 0.7);
+        }
+
+        /* Animation for file cards */
+        .file-card {
+            animation: fadeInUp 0.6s ease backwards;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Stagger animation delays */
+        .file-card:nth-child(1) { animation-delay: 0.1s; }
+        .file-card:nth-child(2) { animation-delay: 0.15s; }
+        .file-card:nth-child(3) { animation-delay: 0.2s; }
+        .file-card:nth-child(4) { animation-delay: 0.25s; }
+        .file-card:nth-child(5) { animation-delay: 0.3s; }
+        .file-card:nth-child(6) { animation-delay: 0.35s; }
+        .file-card:nth-child(7) { animation-delay: 0.4s; }
+        .file-card:nth-child(8) { animation-delay: 0.45s; }
+        .file-card:nth-child(9) { animation-delay: 0.5s; }
+        .file-card:nth-child(10) { animation-delay: 0.55s; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-project-diagram"></i> WeensyOS Architecture</h1>
+            <p>Harvard CS61 - Notes</p>
+            <div class="keyboard-hints">
+                <div class="hint-item">
+                    <span class="hint-key">Click</span>
+                    <span>card for details</span>
+                </div>
+                <div class="hint-item">
+                    <span class="hint-key">Esc</span>
+                    <span>close panel</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="diagram-wrapper">
+            <div id="diagram-canvas">
+                <canvas id="connections-canvas"></canvas>
+
+                <!-- Layer Frames -->
+                <div class="layer-frame boot"></div>
+                <div class="layer-frame kernel"></div>
+                <div class="layer-frame hardware"></div>
+                <div class="layer-frame user"></div>
+                <div class="layer-frame lib"></div>
+
+                <!-- Layer Indicators -->
+                <div class="layer-indicator layer-boot">BOOT & STARTUP</div>
+                <div class="layer-indicator layer-kernel">KERNEL CORE</div>
+                <div class="layer-indicator layer-hardware">HARDWARE SUPPORT</div>
+                <div class="layer-indicator layer-user">USER SPACE</div>
+                <div class="layer-indicator layer-lib">SHARED LIBRARIES</div>
+
+                <!-- File Cards Container -->
+                <div id="files-container"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="info-panel" id="infoPanel">
+        <button class="info-close" onclick="closeInfo()"><i class="fas fa-times"></i></button>
+        <div id="infoPanelContent"></div>
+    </div>
+
+    <script src="file-explorer-data.js"></script>
+    <script>
+        // File positions - clean grid layout showing system architecture
+        // Card width: 200px, spacing: 280px horizontal, 180px vertical
+        const fileLayout = {
+            // === LAYER 1: BOOT & STARTUP (3 files) ===
+            'bootentry': { x: 350, y: 60, category: 'boot' },
+            'boot': { x: 630, y: 60, category: 'boot' },
+            'x86-64': { x: 910, y: 60, category: 'boot' },
+
+            // === LAYER 2: KERNEL CORE (7 files in 3 rows) ===
+            // Row 1: Main kernel files
+            'kernel-cc': { x: 210, y: 360, category: 'kernel' },
+            'kernel-hh': { x: 490, y: 360, category: 'kernel' },
+            'k-exception': { x: 770, y: 360, category: 'kernel' },
+            'k-hardware': { x: 1050, y: 360, category: 'kernel' },
+
+            // Row 2: Memory management
+            'k-memviewer': { x: 350, y: 560, category: 'kernel' },
+            'k-vmiter-cc': { x: 630, y: 560, category: 'kernel' },
+            'k-vmiter-hh': { x: 910, y: 560, category: 'kernel' },
+
+            // === LAYER 3: HARDWARE SUPPORT (2 files) ===
+            'k-apic': { x: 490, y: 910, category: 'hardware' },
+            'k-pci': { x: 770, y: 910, category: 'hardware' },
+
+            // === LAYER 4: USER SPACE (5 files) ===
+            'p-allocator': { x: 210, y: 1230, category: 'user' },
+            'p-fork': { x: 490, y: 1230, category: 'user' },
+            'p-exit': { x: 770, y: 1230, category: 'user' },
+            'u-lib-cc': { x: 1050, y: 1230, category: 'user' },
+            'u-lib-hh': { x: 1330, y: 1230, category: 'user' },
+
+            // === LAYER 5: SHARED LIBRARIES (3 files) ===
+            'lib-cc': { x: 350, y: 1530, category: 'lib' },
+            'lib-hh': { x: 630, y: 1530, category: 'lib' },
+            'cbyteswap': { x: 910, y: 1530, category: 'lib' }
+        };
+
+        const iconMap = {
+            'bootentry': '<i class="fas fa-cog" style="color: #f59e0b;"></i>',
+            'boot': '<i class="fas fa-power-off" style="color: #10b981;"></i>',
+            'x86-64': '<i class="fas fa-microchip" style="color: #8b5cf6;"></i>',
+            'kernel-cc': '<i class="fas fa-bolt" style="color: #eab308;"></i>',
+            'kernel-hh': '<i class="fas fa-file-code" style="color: #ec4899;"></i>',
+            'k-exception': '<i class="fas fa-shield-alt" style="color: #3b82f6;"></i>',
+            'k-hardware': '<i class="fas fa-plug" style="color: #f97316;"></i>',
+            'k-memviewer': '<i class="fas fa-eye" style="color: #06b6d4;"></i>',
+            'k-vmiter-cc': '<i class="fas fa-map" style="color: #8b5cf6;"></i>',
+            'k-vmiter-hh': '<i class="fas fa-file-code" style="color: #ec4899;"></i>',
+            'k-apic': '<i class="fas fa-clock" style="color: #ef4444;"></i>',
+            'k-pci': '<i class="fas fa-server" style="color: #3b82f6;"></i>',
+            'p-allocator': '<i class="fas fa-memory" style="color: #10b981;"></i>',
+            'p-fork': '<i class="fas fa-code-branch" style="color: #8b5cf6;"></i>',
+            'p-exit': '<i class="fas fa-sign-out-alt" style="color: #ef4444;"></i>',
+            'u-lib-cc': '<i class="fas fa-book" style="color: #f59e0b;"></i>',
+            'u-lib-hh': '<i class="fas fa-file-code" style="color: #06b6d4;"></i>',
+            'lib-cc': '<i class="fas fa-tools" style="color: #64748b;"></i>',
+            'lib-hh': '<i class="fas fa-file-code" style="color: #10b981;"></i>',
+            'cbyteswap': '<i class="fas fa-exchange-alt" style="color: #3b82f6;"></i>'
+        };
+
+        // Create file cards
+        const container = document.getElementById('files-container');
+        Object.keys(fileLayout).forEach(fileKey => {
+            const file = fileDatabase[fileKey];
+            const layout = fileLayout[fileKey];
+
+            const card = document.createElement('div');
+            card.className = `file-card ${layout.category}`;
+            card.style.left = layout.x + 'px';
+            card.style.top = layout.y + 'px';
+            card.onclick = () => showFileInfo(fileKey);
+
+            card.innerHTML = `
+                <div class="file-icon">${iconMap[fileKey]}</div>
+                <div class="file-name">${file.filename}</div>
+                <div class="file-desc">${file.purpose.substring(0, 60)}...</div>
+                <div class="file-type-badge">${file.type}</div>
+            `;
+
+            container.appendChild(card);
+        });
+
+        // Draw connections
+        const canvas = document.getElementById('connections-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = document.getElementById('diagram-canvas').offsetWidth;
+            canvas.height = document.getElementById('diagram-canvas').offsetHeight;
+            drawConnections();
+        }
+
+        function drawConnections() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([8, 8]);
+
+            const connections = [
+                // Main boot flow
+                { from: 'bootentry', to: 'boot', color: '#3b82f6' },
+                { from: 'boot', to: 'kernel-cc', color: '#3b82f6' },
+
+                // Key kernel paths
+                { from: 'kernel-cc', to: 'k-exception', color: '#ec4899' },
+                { from: 'kernel-cc', to: 'k-hardware', color: '#ec4899' },
+
+                // Hardware support
+                { from: 'k-hardware', to: 'k-apic', color: '#8b5cf6' },
+                { from: 'k-hardware', to: 'k-pci', color: '#8b5cf6' },
+
+                // Syscall path (kernel to user)
+                { from: 'k-exception', to: 'p-fork', color: '#06b6d4' },
+
+                // User to library
+                { from: 'p-fork', to: 'u-lib-cc', color: '#06b6d4' },
+
+                // Library foundation
+                { from: 'u-lib-cc', to: 'lib-cc', color: '#10b981' },
+                { from: 'kernel-cc', to: 'lib-cc', color: '#10b981' }
+            ];
+
+            connections.forEach(conn => {
+                const from = fileLayout[conn.from];
+                const to = fileLayout[conn.to];
+
+                // Card width is 200px, so center is at 100px
+                ctx.strokeStyle = conn.color + '66';
+                ctx.beginPath();
+                ctx.moveTo(from.x + 100, from.y + 110);
+                ctx.lineTo(to.x + 100, to.y);
+                ctx.stroke();
+            });
+        }
+
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Zoom functionality
+        let scale = 1;
+        const canvas_elem = document.getElementById('diagram-canvas');
+
+        function zoomIn() {
+            scale = Math.min(scale * 1.2, 2);
+            updateZoom();
+        }
+
+        function zoomOut() {
+            scale = Math.max(scale / 1.2, 0.5);
+            updateZoom();
+        }
+
+        function zoomReset() {
+            scale = 1;
+            updateZoom();
+        }
+
+        function updateZoom() {
+            container.style.transform = `scale(${scale})`;
+            container.style.transformOrigin = 'top center';
+        }
+
+        // Show file info
+        function showFileInfo(fileKey) {
+            const file = fileDatabase[fileKey];
+            const category = fileLayout[fileKey].category;
+
+            const badgeClass = `badge-${category}`;
+
+            const content = `
+                <div class="info-header">
+                    <div class="info-title">
+                        <span class="info-icon">${iconMap[fileKey]}</span>
+                        <span>${file.filename}</span>
+                    </div>
+                    <div class="info-badges">
+                        <span class="info-badge ${badgeClass}">${file.category}</span>
+                        <span class="info-badge ${badgeClass}">${file.type}</span>
+                        <span class="info-badge ${badgeClass}">${file.lines} lines</span>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h3><i class="fas fa-bullseye" style="color: #ef4444;"></i> Purpose</h3>
+                    <p><strong>${file.purpose}</strong></p>
+                </div>
+
+                <div class="info-section">
+                    <h3><i class="fas fa-book-open" style="color: #3b82f6;"></i> Description</h3>
+                    <p>${file.description}</p>
+                </div>
+
+                ${file.keyFunctions && file.keyFunctions.length > 0 ? `
+                <div class="info-section">
+                    <h3><i class="fas fa-cogs" style="color: #8b5cf6;"></i> Key Functions</h3>
+                    <ul class="info-list">
+                        ${file.keyFunctions.map(func => `
+                            <li><strong>${func.name}</strong> - ${func.desc}</li>
+                        `).join('')}
+                    </ul>
+                </div>
+                ` : ''}
+
+                ${file.dependencies && file.dependencies.length > 0 ? `
+                <div class="info-section">
+                    <h3><i class="fas fa-link" style="color: #06b6d4;"></i> Dependencies</h3>
+                    <ul class="info-list">
+                        ${file.dependencies.map(dep => `<li>${dep}</li>`).join('')}
+                    </ul>
+                </div>
+                ` : ''}
+            `;
+
+            document.getElementById('infoPanelContent').innerHTML = content;
+            document.getElementById('infoPanel').classList.add('active');
+        }
+
+        function closeInfo() {
+            document.getElementById('infoPanel').classList.remove('active');
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeInfo();
+            else if (e.key === '+' || e.key === '=') zoomIn();
+            else if (e.key === '-' || e.key === '_') zoomOut();
+            else if (e.key === '0') zoomReset();
+        });
+    </script>
+</body>
+</html>
